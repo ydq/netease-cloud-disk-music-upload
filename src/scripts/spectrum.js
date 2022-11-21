@@ -1,0 +1,78 @@
+/**
+ * 频谱配置
+ */
+const spectrum = {
+    canvasWidth: null,
+    canvasHeight: null,
+    ctx: null,
+    analyser: null,
+    gradient: null,
+    meterNum: null,
+    meterWidth: 6,
+    gap: 1,
+    capHeight: 2,
+    capColor: '#CEE2F3',
+    capYPosition: [],
+    fromColor: '#E0EEDA',
+    toColor: '#CEE2F3'
+}
+/**
+ * 初始化频谱
+ */
+const spectrumInit = (audio, canvas) => {
+    canvas.height = spectrum.canvasHeight = canvas.clientHeight
+    canvas.width = spectrum.canvasWidth = canvas.clientWidth
+    let audioCtx = new AudioContext()
+    spectrum.ctx = canvas.getContext("2d")
+    spectrum.meterNum = Math.round(spectrum.canvasWidth / (spectrum.meterWidth + spectrum.gap))
+    spectrum.analyser = audioCtx.createAnalyser()
+    audioCtx.createMediaElementSource(audio).connect(spectrum.analyser)
+    spectrum.analyser.connect(audioCtx.destination)
+    spectrum.gradient = spectrum.ctx.createLinearGradient(0, 0, 0, spectrum.canvasHeight)
+    spectrum.gradient.addColorStop(0, spectrum.fromColor)
+    spectrum.gradient.addColorStop(1, spectrum.toColor)
+    spectrumRenderFrame();
+}
+/**
+ * 循环绘制频谱
+ */
+const spectrumRenderFrame = () => {
+    spectrum.ctx.clearRect(0, 0, spectrum.canvasWidth, spectrum.canvasHeight + spectrum.capHeight)
+    let array = new Uint8Array(spectrum.analyser.frequencyBinCount)
+    spectrum.analyser.getByteFrequencyData(array)
+    let step = Math.floor(array.length / spectrum.meterNum)
+    spectrum.ctx.clearRect(0, 0, spectrum.canvasWidth, spectrum.canvasHeight)
+    for (let i = 0; i < spectrum.meterNum; i++) {
+        let value = (array[i * step] * spectrum.canvasHeight) / spectrum.canvasHeight
+        if (spectrum.capYPosition.length < spectrum.meterNum)
+            spectrum.capYPosition.push(value)
+        spectrum.ctx.fillStyle = spectrum.capColor
+        let xPos = i * (spectrum.meterWidth + spectrum.gap)
+        if (value < spectrum.capYPosition[i]) {
+            spectrum.ctx.fillRect(
+                xPos,
+                spectrum.canvasHeight - --spectrum.capYPosition[i],
+                spectrum.meterWidth,
+                spectrum.capHeight
+            );
+        } else {
+            spectrum.ctx.fillRect(
+                xPos,
+                Math.max(0, spectrum.canvasHeight - value),
+                spectrum.meterWidth,
+                spectrum.capHeight
+            );
+            spectrum.capYPosition[i] = value
+        }
+        spectrum.ctx.fillStyle = spectrum.gradient
+        spectrum.ctx.fillRect(
+            xPos,
+            Math.max(0, spectrum.canvasHeight - value) + spectrum.capHeight,
+            spectrum.meterWidth,
+            spectrum.canvasHeight
+        );
+    }
+    requestAnimationFrame(spectrumRenderFrame)
+}
+
+export { spectrumInit }

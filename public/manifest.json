@@ -1,0 +1,17 @@
+{
+    "manifest_version": 3,
+    "name": "网易云音乐云盘管理",
+    "description":"网易云音乐云盘管理，支持删除和上传本地音乐至网易云盘",
+    "version": "1.1",
+    "author":"darren",
+    "icons":{
+        "32":"imgs/icon.png",
+        "48":"imgs/icon.png"
+    },
+    "action":{
+        "default_popup": "popup/popup.html"
+    },
+    "host_permissions":[
+        "https://*.music.163.com/*"
+    ]
+  }
