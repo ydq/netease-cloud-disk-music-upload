@@ -1,6 +1,6 @@
 <script setup>
 import { inject, onMounted, reactive, watch } from 'vue'
-import { cloudGet, cloudDel, songInfo, lyric, validCode } from '@/scripts/api.js'
+import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '@/scripts/api.js'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { message, Modal } from 'ant-design-vue'
@@ -22,16 +22,19 @@ const cloud = reactive({
 })
 
 const columns = [
+    { title: '下载', key: 'dl', width: 45 },
     { title: '播放', key: 'play', width: 45 },
     { title: '标题', dataIndex: 'songName', ellipsis: true, },
     { title: '歌手', dataIndex: 'artist', width: 200, ellipsis: true, },
     { title: '专辑', dataIndex: 'album', width: 200, ellipsis: true, },
     { title: '大小', dataIndex: 'fileSize', width: 100 },
     { title: '上传时间', dataIndex: 'addTime', width: 120 },
-    { title: '下载', key: 'dl', width: 45 },
+    { title: '操作', key: 'ops', width: 45 },
 ]
 
 const checkLogin = inject('checkLogin')
+const player = inject('player')
+const user = inject('user')
 
 /**
  * 加载网盘分页列表数据
@@ -82,7 +85,7 @@ const delData = () => {
                 await loadData(pagination)
                 message.success('删除云盘指定音乐成功')
             } else {
-                message.warn('删除云盘音乐失败，但重试几次没准会有奇效～')
+                message.warn('删除云盘音乐失败，但重试几次或换个时间段再试没准会有奇效～')
             }
         }
     });
@@ -105,16 +108,15 @@ const dateFmt = time => {
     return d.fromNow()
 }
 
-const player = inject('player')
 
 const play = async item => {
     if (player.id != item.songId) {
         let resp = await songInfo({ ids: [item.songId] })
         if (validCode.includes(resp.code)) {
             getLyric(item.songId)
-            player.play(item.songId, resp.data[0].url)
+            player.play(item.songId, resp.data[0].url, item.simpleSong.al.picUrl)
         } else {
-            message.warn("获取链接地址失败，但重试几次没准会有奇效～")
+            message.warn("获取链接地址失败，但重试几次或换个时间段再试没准会有奇效～")
         }
     } else {
         player.stop()
@@ -212,11 +214,54 @@ const download = async items => {
                 elink.click();
                 URL.revokeObjectURL(elink.href);
                 document.body.removeChild(elink);
-
+                cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(song.id), 1)
             }
         } else {
-            message.warn('获取链接地址失败，但重试几次没准会有奇效～')
+            message.warn('获取链接地址失败，但重试几次或换个时间段再试没准会有奇效～')
         }
+    }
+}
+
+const match = async record => {
+    if (!record.asid) {
+        message.info('您还没有输入任何内容，若想清空已有的匹配请输入0')
+        return
+    }
+    record.asid = record.asid.trim()
+    let urlmatch = record.asid.match(/music\.163\.com\/(?<type>\w+).*[?&]id=(?<asid>\d+)/)
+    if (urlmatch) {
+        if (urlmatch.groups.type == 'song') {
+            record.asid = urlmatch.groups.asid
+        }
+    }
+    if (!/^\d+$/.test(record.asid)) {
+        message.warn('您输入的可能不是一个合法的ID或者网易云音乐的歌曲链接，请检查～')
+        return;
+    }
+    if (record.asid == record.songId) {
+        message.info('当前歌曲已经是您填写的匹配信息了，若要取消匹配请输入0')
+        return
+    }
+    let oldId = record.songId
+    let resp = await songMatch({ userId: user.id, adjustSongId: record.asid, songId: record.songId })
+    if (validCode.includes(resp.code)) {
+        message.success('歌曲信息已匹配纠正～')
+        Object.assign(record, resp.matchData)
+        delete record.asid
+        let newId = record.songId
+        //因为歌曲信息匹配修改之后，网盘内的歌曲ID变成了你输入的歌曲ID
+        //所以 如果播放器播放的是当前老的ID，则需要进行更新
+        if (player.id == oldId) {
+            player.id = newId
+            player.cover = record.simpleSong.al.picUrl
+            getLyric(newId)//自动触发根据新的歌曲ID重新获取歌词
+        }
+        if (cloud.selectedRowKeys.includes(oldId)) {
+            cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(oldId), 1);
+            cloud.selectedRowKeys.push(newId);
+        }
+    } else {
+        message.warn(resp.message)
     }
 }
 
@@ -224,49 +269,53 @@ onMounted(reload)
 </script>
 <template>
     <a-table class="ant-table-hover-pointer"
-        size="small"
-        :dataSource="cloud.data"
-        :columns="columns"
-        :loading="cloud.loading"
-        :pagination="pagination"
-        row-key="songId"
-        :row-selection="{
-            selectedRowKeys: cloud.selectedRowKeys,
-            onChange(keys) { cloud.selectedRowKeys = keys }
-        }"
-        :custom-row="record => {
-            return {
-                onClick: () => {
-                    if (cloud.selectedRowKeys.includes(record.songId)) {
-                        cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(record.songId), 1);
-                    } else {
-                        cloud.selectedRowKeys.push(record.songId);
-                    }
-                },
-            }
-        }"
-        @change="loadData">
+             size="small"
+             :dataSource="cloud.data"
+             :columns="columns"
+             :loading="cloud.loading"
+             :pagination="pagination"
+             row-key="songId"
+             :row-selection="{
+                 selectedRowKeys: cloud.selectedRowKeys,
+                 onChange(keys) { cloud.selectedRowKeys = keys },
+                 getCheckboxProps: record => ({ disabled: record.dlPercent != null })
+             }"
+             :custom-row="record => {
+                 return {
+                     onClick: () => {
+                         if (record.dlPercent == null) {
+                             if (cloud.selectedRowKeys.includes(record.songId)) {
+                                 cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(record.songId), 1);
+                             } else {
+                                 cloud.selectedRowKeys.push(record.songId);
+                             }
+             
+                         }
+                     },
+                 }
+             }"
+             @change="loadData">
         <template #title>
             <a-row type="flex">
                 <a-col flex="300px">
                     <a-space>
                         <a-tooltip title="重新加载">
                             <a-button size="small"
-                                @click="reload()">
+                                      @click="reload()">
                                 ◎
                             </a-button>
                         </a-tooltip>
                         <a-tooltip title="批量删除">
                             <a-button size="small"
-                                :disabled="!cloud.selectedRowKeys.length"
-                                @click="delData()">
+                                      :disabled="!cloud.selectedRowKeys.length"
+                                      @click="delData()">
                                 &times;
                             </a-button>
                         </a-tooltip>
                         <a-tooltip title="批量下载">
                             <a-button size="small"
-                                :disabled="!cloud.selectedRowKeys.length"
-                                @click="batchDownload()">
+                                      :disabled="!cloud.selectedRowKeys.length"
+                                      @click="batchDownload()">
                                 ↓
                             </a-button>
                         </a-tooltip>
@@ -292,29 +341,29 @@ onMounted(reload)
         <template #bodyCell="{ column, record }">
             <template v-if="column.key == 'play'">
                 <a-progress @click.stop="play(record)"
-                    type="circle"
-                    :percent="record.playing && record.percent || 0"
-                    :width="cloud.progressWidth"
-                    trailColor="#ddd">
+                            type="circle"
+                            :percent="record.playing && record.percent || 0"
+                            :width="cloud.progressWidth"
+                            trailColor="#ddd">
                     <template #format>
                         <i class="icn"
-                            :class="record.playing ? 'stop' : 'play'"></i>
+                           :class="record.playing ? 'stop' : 'play'"></i>
                     </template>
                 </a-progress>
             </template>
             <template v-else-if="column.dataIndex == 'songName'">
-                <a-tooltip :title="record.songName">
-                    {{ record.songName }}
+                <a-tooltip :title="record.simpleSong.name || record.songName">
+                    {{ record.simpleSong.name || record.songName }}
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'artist'">
-                <a-tooltip :title="record.artist">
-                    {{ record.artist }}
+                <a-tooltip :title="record.simpleSong.ar && record.simpleSong.ar.length && record.simpleSong.ar[0].name || record.artist">
+                    {{ record.simpleSong.ar && record.simpleSong.ar.length && record.simpleSong.ar[0].name || record.artist }}
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'album'">
-                <a-tooltip :title="record.album">
-                    {{ record.album }}
+                <a-tooltip :title="record.simpleSong.al.name || record.album">
+                    {{ record.simpleSong.al.name || record.album }}
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'fileSize'">
@@ -325,16 +374,41 @@ onMounted(reload)
             </template>
             <template v-else-if="column.key == 'dl'">
                 <a-progress @click.stop="download([record])"
-                    type="circle"
-                    :percent="record.dlPercent || 0"
-                    :width="cloud.progressWidth"
-                    trailColor="#ddd">
+                            type="circle"
+                            :percent="record.dlPercent || 0"
+                            :width="cloud.progressWidth"
+                            trailColor="#ddd">
                     <template #format="percent">
                         <span v-if="percent == 0">↓</span>
                         <span v-else-if="percent < 100">{{ percent }}</span>
                         <span v-else>✓</span>
                     </template>
                 </a-progress>
+            </template>
+            <template v-else-if="column.key == 'ops'">
+                <a-popover placement="left">
+                    <template #title>
+                        歌曲信息匹配纠正
+                        <a-tooltip mouseLeaveDelay="0"
+                                   title="利用网易云音乐中已有的歌曲信息替换网盘中的歌曲信息，以便能获取歌词、图片等信息，网盘音乐播放和下载时的音乐文件还是原来上传的文件，若想取消替换，输入0即可">
+                            <span style="cursor: pointer;">❓</span>
+                        </a-tooltip>
+                    </template>
+                    <template #content>
+                        <div class="match-edit">
+                            <a-input-group compact>
+                                <a-input size="small"
+                                         v-model:value="record.asid"
+                                         placeholder="输入ID或者链接按回车"
+                                         @keyup.enter="match(record)"></a-input>
+                                <a-button size="small"
+                                          @click.stop="match(record)">✓</a-button>
+                            </a-input-group>
+                        </div>
+                    </template>
+                    <a-button size="small"
+                              @click.stop>@</a-button>
+                </a-popover>
             </template>
         </template>
     </a-table>
@@ -362,5 +436,9 @@ onMounted(reload)
 
 .v-leave-to {
     transform: translateX(-20px);
+}
+
+.match-edit .ant-input-group-compact {
+    display: flex;
 }
 </style>

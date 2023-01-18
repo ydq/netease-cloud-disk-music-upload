@@ -9,8 +9,8 @@ const spectrum = {
     gradient: null,
     meterNum: null,
     meterWidth: 6,
-    gap: 1,
-    capHeight: 2,
+    gap: 2,
+    capHeight: 4,
     capColor: '#CEE2F3',
     capYPosition: [],
     fromColor: '#E0EEDA',
@@ -20,8 +20,8 @@ const spectrum = {
  * 初始化频谱
  */
 const spectrumInit = (audio, canvas) => {
-    canvas.height = spectrum.canvasHeight = canvas.clientHeight
-    canvas.width = spectrum.canvasWidth = canvas.clientWidth
+    canvas.height = spectrum.canvasHeight = canvas.clientHeight * 2
+    canvas.width = spectrum.canvasWidth = canvas.clientWidth * 2
     let audioCtx = new AudioContext()
     spectrum.ctx = canvas.getContext("2d")
     spectrum.meterNum = Math.round(spectrum.canvasWidth / (spectrum.meterWidth + spectrum.gap))

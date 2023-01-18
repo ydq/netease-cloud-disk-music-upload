@@ -187,10 +187,18 @@ const lyric = async (data = {
     return (await instance.post('https://music.163.com/api/song/lyric?_nmclfl=1', new URLSearchParams(data).toString())).data
 }
 
+const songMatch = async (data = {
+    userId: null,
+    songId: null,
+    adjustSongId: null
+}) => {
+    return (await instance.post('https://music.163.com/api/cloud/user/song/match', new URLSearchParams(data).toString())).data
+}
+
 /**
  * 一些可能合法的返回code（如：已经上传过的音乐再次上传，返回 201，其它 code 来自于 NeteaseCloudMusicApi ）
  */
 const validCode = [200, 201, 800, 801, 802, 803]
 
 
-export { userAccount, cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, cloudDel, songInfo, lyric, validCode }
+export { userAccount, cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, cloudDel, songInfo, lyric, songMatch, validCode }

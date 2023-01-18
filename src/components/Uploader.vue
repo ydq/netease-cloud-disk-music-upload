@@ -93,7 +93,7 @@ const upload = async (i, autoRetry = true) => {
 
     let checkResp = await uploadCheck({ md5, length: data.file.size })
 
-    let failSuffix = '失败了，但手动重试几次没准会有奇效～'
+    let failSuffix = '失败了，但手动重试几次或换个时间段再试没准会有奇效～'
     let retryMsg = '上传发生了一点问题，正在自动重试...'
 
     if (!validCode.includes(checkResp.code)) {
@@ -247,17 +247,17 @@ watch(() => player.percent, percent => {
 </script>
 <template>
     <div class="drop-container"
-        :class="{ draging: uploader.drag }"
-        @drop.prevent="dropFile"
-        @dragover.prevent="uploader.drag = true"
-        @dragenter="uploader.drag = true"
-        @dragleave="uploader.drag = false">
+         :class="{ draging: uploader.drag }"
+         @drop.prevent="dropFile"
+         @dragover.prevent="uploader.drag = true"
+         @dragenter="uploader.drag = true"
+         @dragleave="uploader.drag = false">
 
         <a-table size="small"
-            row-key="filename"
-            :pagination="false"
-            :dataSource="uploader.files"
-            :columns="columns">
+                 row-key="filename"
+                 :pagination="false"
+                 :dataSource="uploader.files"
+                 :columns="columns">
             <template #title>
 
                 <label for="fileInput">
@@ -266,14 +266,14 @@ watch(() => player.percent, percent => {
                     </a-tooltip>
 
                     <input id="fileInput"
-                        type="file"
-                        accept=".mp3,.flac,.ape,.wma,.wav,.ogg,.aac"
-                        multiple
-                        @change="changeFile"
-                        :key="uploader.filesKey" />
+                           type="file"
+                           accept=".mp3,.flac,.ape,.wma,.wav,.ogg,.aac"
+                           multiple
+                           @change="changeFile"
+                           :key="uploader.filesKey" />
 
                     <a-typography-text type="secondary">
-                        点此 <b>选择文件</b>（支持多选） 或者 将 <b>文件往拖放</b> 至下方区域以添加至上传列表
+                        点此 <b>选择文件</b>（支持多选） 或者 将 <b>文件拖放</b> 至下方区域以添加至上传列表
                     </a-typography-text>
                 </label>
 
@@ -281,13 +281,13 @@ watch(() => player.percent, percent => {
             <template #bodyCell="{ column, record, text, index }">
                 <template v-if="column.key == 'play'">
                     <a-progress @click.stop="play(record)"
-                        type="circle"
-                        :percent="record.playing && record.playPercent || 0"
-                        :width="uploader.progressWidth"
-                        trailColor="#ddd">
+                                type="circle"
+                                :percent="record.playing && record.playPercent || 0"
+                                :width="uploader.progressWidth"
+                                trailColor="#ddd">
                         <template #format>
                             <i class="icn"
-                                :class="record.playing ? 'stop' : 'play'"></i>
+                               :class="record.playing ? 'stop' : 'play'"></i>
                         </template>
                     </a-progress>
                 </template>
@@ -296,8 +296,8 @@ watch(() => player.percent, percent => {
                 </template>
                 <template v-else-if="['song', 'artist', 'album'].includes(column.dataIndex)">
                     <a-input v-if="editableData[record.filename]"
-                        size="small"
-                        v-model:value="editableData[record.filename][column.dataIndex]" />
+                             size="small"
+                             v-model:value="editableData[record.filename][column.dataIndex]" />
                     <template v-else>
                         {{ text }}
                     </template>
@@ -306,49 +306,49 @@ watch(() => player.percent, percent => {
                     <a-space v-if="record.percent == null">
                         <template v-if="editableData[record.filename]">
                             <a-tooltip title="保存信息"
-                                key="tp-save"
-                                :mouseLeaveDelay="0">
+                                       key="tp-save"
+                                       :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                    @click="save(record.filename)">✓</a-button>
+                                          @click="save(record.filename)">✓</a-button>
                             </a-tooltip>
 
                             <a-popconfirm title="确定取消吗？"
-                                @confirm="cancel(record.filename)">
+                                          @confirm="cancel(record.filename)">
                                 <a-tooltip title="取消保存"
-                                    placement="right"
-                                    key="tp-cancel"
-                                    :mouseLeaveDelay="0">
+                                           placement="right"
+                                           key="tp-cancel"
+                                           :mouseLeaveDelay="0">
                                     <a-button size="small">&times;</a-button>
                                 </a-tooltip>
                             </a-popconfirm>
                         </template>
                         <template v-else>
                             <a-tooltip title="编辑信息"
-                                key="tp-edit"
-                                :mouseLeaveDelay="0">
+                                       key="tp-edit"
+                                       :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                    @click="edit(record.filename)">#</a-button>
+                                          @click="edit(record.filename)">#</a-button>
                             </a-tooltip>
 
                             <a-tooltip title="上传音乐"
-                                key="tp-upload"
-                                :mouseLeaveDelay="0">
+                                       key="tp-upload"
+                                       :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                    @click="upload(index)">↑</a-button>
+                                          @click="upload(index)">↑</a-button>
                             </a-tooltip>
                             <a-tooltip title="移除列表"
-                                key="tp-remove"
-                                :mouseLeaveDelay="0">
+                                       key="tp-remove"
+                                       :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                    @click="uploader.files.splice(index, 1)">&times;</a-button>
+                                          @click="uploader.files.splice(index, 1)">&times;</a-button>
                             </a-tooltip>
                         </template>
                     </a-space>
                     <a-progress v-else
-                        :percent="record.percent"
-                        :status="record.percent == 100 ? 'success' : 'active'"
-                        :stroke-color="progressColor"
-                        size="small" />
+                                :percent="record.percent"
+                                :status="record.percent == 100 ? 'success' : 'active'"
+                                :stroke-color="progressColor"
+                                size="small" />
                 </template>
             </template>
         </a-table>

@@ -13,6 +13,7 @@ import 'ant-design-vue/es/modal/style/css'
 dayjs.locale('zh-cn');
 
 const user = reactive({
+    id: null,
     avatar: '',
     name: '',
     age: '',
@@ -26,15 +27,17 @@ audio.crossOrigin = 'anonymous'
 const player = reactive({
     id: null,
     src: null,
+    cover: null,
     percent: 0,
     currSec: 0,
-    play(newId, newSrc) {
+    play(newId, newSrc, cover) {
         this.id = newId
         audio.src = newSrc
         if (this.src && this.src.startsWith('blob:')) {
             URL.revokeObjectURL(this.src)
         }
         this.src = newSrc
+        this.cover = cover
         audio.play()
     },
     stop() {
@@ -44,6 +47,7 @@ const player = reactive({
         }
         this.id = null
         this.src = null
+        this.cover = null
         this.percent = 0
         this.currSec = 0
     }
@@ -55,7 +59,7 @@ audio.addEventListener("timeupdate", e => {
 })
 
 audio.addEventListener("ended", e => {
-    player.stop(/^\d+$/.test(player.id))
+    player.stop()
 })
 
 const canvasEl = ref()
@@ -72,6 +76,7 @@ const checkLogin = async () => {
             }
         })
     } else {
+        user.id = resp.account.id
         user.name = resp.profile.nickname
         user.avatar = resp.profile.avatarUrl
         if (resp.profile.gender && resp.profile.birthday) {
@@ -85,6 +90,7 @@ const checkLogin = async () => {
 }
 
 provide('player', player);
+provide('user', user);
 provide('checkLogin', checkLogin);
 
 onMounted(async () => {
@@ -98,31 +104,32 @@ onMounted(async () => {
 
 <template>
     <a-config-provider :locale="zhCN"
-        v-if="user.name && user.avatar">
+                       v-if="user.name && user.avatar">
         <a-page-header :title="user.name"
-            :sub-title="user.age"
-            :avatar="{ src: user.avatar }">
+                       :sub-title="user.age"
+                       :avatar="{ src: player.cover || user.avatar ,size:'large'}"
+                       :class="{ playing: !!player.id }">
             <template #tags>
                 <a-tag v-if="user.gender == 1"
-                    color="blue">♂︎</a-tag>
+                       color="blue">♂︎</a-tag>
                 <a-tag v-else
-                    color="pink">♀︎</a-tag>
+                       color="pink">♀︎</a-tag>
             </template>
         </a-page-header>
         <a-tabs :animated="true"
-            size="small">
+                size="small">
             <a-tab-pane key="list"
-                tab="网盘音乐列表">
+                        tab="网盘音乐列表">
                 <List />
             </a-tab-pane>
             <a-tab-pane key="uploader"
-                tab="本地音乐上传">
+                        tab="本地音乐上传">
                 <Uploader />
             </a-tab-pane>
         </a-tabs>
     </a-config-provider>
     <canvas id="spectrumCanvas"
-        ref="canvasEl"></canvas>
+            ref="canvasEl"></canvas>
 </template>
 
 <style>
@@ -138,7 +145,7 @@ onMounted(async () => {
 #spectrumCanvas {
     position: absolute;
     width: 960px;
-    height: 88px;
+    height: 95px;
     top: 0;
     right: 0;
     transform: rotateY(180deg);
@@ -201,5 +208,19 @@ onMounted(async () => {
 
 .ant-progress:hover .icn {
     color: #1890ff
+}
+
+.playing .ant-avatar img {
+    animation: turn 5s linear infinite;
+    border:1px solid #F1011D;
+}
+
+@keyframes turn {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 </style>
