@@ -24,7 +24,7 @@ const cloud = reactive({
 const columns = [
     { title: '下载', key: 'dl', width: 45 },
     { title: '播放', key: 'play', width: 45 },
-    { title: '标题', dataIndex: 'songName', ellipsis: true, },
+    { title: '标题', dataIndex: 'songName', width: 200, ellipsis: true, },
     { title: '歌手', dataIndex: 'artist', width: 200, ellipsis: true, },
     { title: '专辑', dataIndex: 'album', width: 200, ellipsis: true, },
     { title: '大小', dataIndex: 'fileSize', width: 100 },
@@ -352,6 +352,8 @@ onMounted(reload)
                 </a-progress>
             </template>
             <template v-else-if="column.dataIndex == 'songName'">
+                <img :src='record.simpleSong.al.picUrl' :width='30' :height='30'>
+                <span>&nbsp;</span>
                 <a-tooltip :title="record.simpleSong.name || record.songName">
                     {{ record.simpleSong.name || record.songName }}
                 </a-tooltip>
