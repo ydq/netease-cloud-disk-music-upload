@@ -21,8 +21,8 @@ const commonCfg = defineConfig({
 export default ({ command, mode }) => {
     if (command === 'build' && mode === 'watch') {
         let watchCfg = Object.assign({}, commonCfg)
-        watchCfg.build = Object.assign({}, watchCfg.build || {})
-        watchCfg.build.watch = watchCfg.build.watch || {}
+        watchCfg.build ??= {}
+        watchCfg.build.watch ??= {}
         return watchCfg
     }
     return commonCfg;

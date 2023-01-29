@@ -202,7 +202,6 @@ const cancel = filename => {
 }
 
 const columns = [
-    { title: '播放', key: 'play', width: 45 },
     { title: '标题', dataIndex: 'song', ellipsis: true, },
     { title: '歌手', dataIndex: 'artist', ellipsis: true, },
     { title: '专辑', dataIndex: 'album', ellipsis: true, },
@@ -279,22 +278,30 @@ watch(() => player.percent, percent => {
 
             </template>
             <template #bodyCell="{ column, record, text, index }">
-                <template v-if="column.key == 'play'">
-                    <a-progress @click.stop="play(record)"
-                                type="circle"
-                                :percent="record.playing && record.playPercent || 0"
-                                :width="uploader.progressWidth"
-                                trailColor="#ddd">
-                        <template #format>
-                            <i class="icn"
-                               :class="record.playing ? 'stop' : 'play'"></i>
-                        </template>
-                    </a-progress>
-                </template>
-                <template v-else-if="column.key == 'size'">
+                <template v-if="column.key == 'size'">
                     {{ (record.file.size / 1024 / 1024).toFixed(1) }} MB
                 </template>
-                <template v-else-if="['song', 'artist', 'album'].includes(column.dataIndex)">
+                <template v-else-if="column.dataIndex == 'song'">
+                    <a-space size="small">
+                        <a-progress @click.stop="play(record)"
+                                    type="circle"
+                                    :percent="record.playing && record.playPercent || 0"
+                                    :width="uploader.progressWidth"
+                                    trailColor="#ddd">
+                            <template #format>
+                                <i class="icn"
+                                :class="record.playing ? 'stop' : 'play'"></i>
+                            </template>
+                        </a-progress>
+                        <a-input v-if="editableData[record.filename]"
+                                size="small"
+                                v-model:value="editableData[record.filename][column.dataIndex]" />
+                        <template v-else>
+                            {{ text }}
+                        </template>
+                    </a-space>
+                </template>
+                <template v-else-if="['artist', 'album'].includes(column.dataIndex)">
                     <a-input v-if="editableData[record.filename]"
                              size="small"
                              v-model:value="editableData[record.filename][column.dataIndex]" />

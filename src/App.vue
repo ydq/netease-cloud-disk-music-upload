@@ -2,13 +2,10 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
-import { nextTick, onMounted, provide, reactive, ref } from 'vue';
-import List from '@/components/List.vue'
-import Uploader from '@/components/Uploader.vue'
+import { defineAsyncComponent, onMounted, provide, reactive } from 'vue';
 import { userAccount } from '@/scripts/api.js'
-import { spectrumInit } from '@/scripts/spectrum.js'
-import { Modal } from 'ant-design-vue'
-import 'ant-design-vue/es/modal/style/css'
+import { message } from 'ant-design-vue'
+import 'ant-design-vue/es/message/style/css'
 
 dayjs.locale('zh-cn');
 
@@ -16,7 +13,7 @@ const user = reactive({
     id: null,
     avatar: '',
     name: '',
-    age: '',
+    profile: '',
     gender: 0
 })
 
@@ -53,38 +50,29 @@ const player = reactive({
     }
 })
 
-audio.addEventListener("timeupdate", e => {
+audio.onended = e => player.stop()
+audio.ontimeupdate = e => {
     player.currSec = Math.floor(audio.currentTime)
     player.percent = audio.currentTime * 100 / audio.duration
-})
-
-audio.addEventListener("ended", e => {
+}
+audio.onerror = e => {
+    message.warn('播放失败，可能是' + (player.src.startsWith('blob:') ? '音频格式暂不支持' : '网易云返回的地址访问失败所致'))
     player.stop()
-})
-
-const canvasEl = ref()
+}
 
 const checkLogin = async () => {
     let resp = await userAccount()
-    if (!resp.account || !resp.profile) {
-        Modal.warning({
-            title: '获取登录信息失败',
-            content: '您可能还没有登录或者登录信息已过期，请打开网易音乐官网进行登录',
-            okText: '确定',
-            onOk() {
-                location.replace('https://music.163.com')
-            }
-        })
-    } else {
+    if (resp.account && resp.profile) {
         user.id = resp.account.id
         user.name = resp.profile.nickname
         user.avatar = resp.profile.avatarUrl
         if (resp.profile.gender && resp.profile.birthday) {
             user.gender = resp.profile.gender
-            let bd = dayjs(resp.profile.birthday)
-            let age = bd.diff(Date.now(), 'year') * -1
-            let prefix = age < 30 ? '小' : user.gender == 1 ? '老' : '大'
-            user.age = `${age} 岁的 ${bd.format('YY').substring(0, 1)}0 后 ${user.gender == 1 ? prefix + '哥哥' : user.gender == 2 ? prefix + '姐姐' : ''} 一枚`
+            let birthday = dayjs(resp.profile.birthday)
+            let years = birthday.format('YY').substring(0, 1) + '0 后'
+            let age = birthday.diff(Date.now(), 'year') * -1
+            let call = (age < 30 ? '小' : user.gender == 1 ? '老' : '大') + (user.gender == 1 ? '哥哥' : '姐姐')
+            user.profile = `${age} 岁的 ${years} ${call} 一枚`
         }
     }
 }
@@ -93,43 +81,46 @@ provide('player', player);
 provide('user', user);
 provide('checkLogin', checkLogin);
 
-onMounted(async () => {
-    //检查登录
-    await checkLogin()
-    nextTick(() => spectrumInit(audio, canvasEl.value))
-})
+onMounted(async () => await checkLogin())
+
+const login = defineAsyncComponent(() => import('./components/Login.vue'))
+const list = defineAsyncComponent(() => import('./components/List.vue'))
+const uploader = defineAsyncComponent(() => import('./components/Uploader.vue'))
+const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
 
 
 </script>
 
 <template>
-    <a-config-provider :locale="zhCN"
-                       v-if="user.name && user.avatar">
-        <a-page-header :title="user.name"
-                       :sub-title="user.age"
-                       :avatar="{ src: player.cover || user.avatar ,size:'large'}"
-                       :class="{ playing: !!player.id }">
-            <template #tags>
-                <a-tag v-if="user.gender == 1"
-                       color="blue">♂︎</a-tag>
-                <a-tag v-else
-                       color="pink">♀︎</a-tag>
-            </template>
-        </a-page-header>
-        <a-tabs :animated="true"
-                size="small">
-            <a-tab-pane key="list"
-                        tab="网盘音乐列表">
-                <List />
-            </a-tab-pane>
-            <a-tab-pane key="uploader"
-                        tab="本地音乐上传">
-                <Uploader />
-            </a-tab-pane>
-        </a-tabs>
+    <a-config-provider :locale="zhCN">
+        <template v-if="user.name && user.avatar">
+            <a-page-header class="userinfo"
+            :title="user.name"
+                           :sub-title="user.profile"
+                           :avatar="{ src: player.cover || user.avatar, size: 'large' }"
+                           :class="{ playing: !!player.id }">
+                <template #tags>
+                    <a-tag v-if="user.gender == 1"
+                           color="blue">♂︎</a-tag>
+                    <a-tag v-else
+                           color="pink">♀︎</a-tag>
+                </template>
+            </a-page-header>
+            <a-tabs :animated="true"
+                    size="small">
+                <a-tab-pane key="list"
+                            tab="网盘音乐列表">
+                    <list />
+                </a-tab-pane>
+                <a-tab-pane key="uploader"
+                            tab="本地音乐上传">
+                    <uploader />
+                </a-tab-pane>
+            </a-tabs>
+            <spectrum :audio="audio" />
+        </template>
+        <login v-else />
     </a-config-provider>
-    <canvas id="spectrumCanvas"
-            ref="canvasEl"></canvas>
 </template>
 
 <style>
@@ -140,17 +131,6 @@ onMounted(async () => {
     width: 90%;
     min-height: 100%;
     margin: auto;
-}
-
-#spectrumCanvas {
-    position: absolute;
-    width: 960px;
-    height: 95px;
-    top: 0;
-    right: 0;
-    transform: rotateY(180deg);
-    z-index: -1;
-    pointer-events: none;
 }
 
 .ant-page-header,
@@ -171,7 +151,7 @@ onMounted(async () => {
     padding-top: 10px;
 }
 
-.ant-avatar img {
+.userinfo img {
     border: 1px solid #aaa;
     border-radius: 50%;
 }
@@ -212,13 +192,13 @@ onMounted(async () => {
 
 .playing .ant-avatar img {
     animation: turn 5s linear infinite;
-    border:1px solid #F1011D;
 }
 
 @keyframes turn {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }

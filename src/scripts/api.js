@@ -63,7 +63,6 @@ const chunkSize = 80 * 1024 * 1024;
 const splitFile = async (file, start, end) => {
     let blobSlice = File.prototype.slice || File.prototype.webkitSlice
     return new Promise((resolve, reject) => {
-        console.log()
         let fileReader = new FileReader()
         fileReader.onload = e => resolve(e.target.result)
         fileReader.onerror = reject
@@ -195,10 +194,20 @@ const songMatch = async (data = {
     return (await instance.post('https://music.163.com/api/cloud/user/song/match', new URLSearchParams(data).toString())).data
 }
 
+
+const loginKey = async (data = { type: 1 }) => {
+    return (await instance.post('https://music.163.com/api/login/qrcode/unikey', new URLSearchParams(data).toString())).data
+}
+
+const checkScan = async (data = { key: null }) => {
+    data = Object.assign({ type: 1 }, data)
+    return (await instance.post('https://music.163.com/api/login/qrcode/client/login', new URLSearchParams(data).toString())).data
+}
+
 /**
  * 一些可能合法的返回code（如：已经上传过的音乐再次上传，返回 201，其它 code 来自于 NeteaseCloudMusicApi ）
  */
 const validCode = [200, 201, 800, 801, 802, 803]
 
 
-export { userAccount, cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, cloudDel, songInfo, lyric, songMatch, validCode }
+export { userAccount, cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, cloudDel, songInfo, lyric, songMatch, loginKey, checkScan, validCode }
