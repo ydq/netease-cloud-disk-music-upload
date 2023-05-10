@@ -1,13 +1,10 @@
 <script setup>
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
-import dayjs from 'dayjs';
-import 'dayjs/locale/zh-cn';
-import { defineAsyncComponent, onMounted, provide, reactive } from 'vue';
-import { userAccount } from '@/scripts/api.js'
+import { defineAsyncComponent, onMounted, provide, reactive, ref, watch } from 'vue';
+import { checkLogin, switchUser, resumeUser, userList } from '@/js/users.js'
 import { message } from 'ant-design-vue'
 import 'ant-design-vue/es/message/style/css'
 
-dayjs.locale('zh-cn');
 
 const user = reactive({
     id: null,
@@ -16,6 +13,10 @@ const user = reactive({
     profile: '',
     gender: 0
 })
+
+
+
+const users = ref([])
 
 
 const audio = new Audio()
@@ -60,33 +61,35 @@ audio.onerror = e => {
     player.stop()
 }
 
-const checkLogin = async () => {
-    let resp = await userAccount()
-    if (resp.account && resp.profile) {
-        user.id = resp.account.id
-        user.name = resp.profile.nickname
-        user.avatar = resp.profile.avatarUrl
-        if (resp.profile.gender && resp.profile.birthday) {
-            user.gender = resp.profile.gender
-            let birthday = dayjs(resp.profile.birthday)
-            let years = birthday.format('YY').substring(0, 1) + '0 后'
-            let age = birthday.diff(Date.now(), 'year') * -1
-            let call = (age < 30 ? '小' : user.gender == 1 ? '老' : '大') + (user.gender == 1 ? '哥哥' : '姐姐')
-            user.profile = `${age} 岁的 ${years} ${call} 一枚`
-        }
-    }
-}
 
 provide('player', player);
 provide('user', user);
-provide('checkLogin', checkLogin);
 
-onMounted(async () => await checkLogin())
+onMounted(async () => {
+    let check = await checkLogin(user)
+    if (check) {
+        users.value = userList(user.id)
+    }
+})
+
+
+async function switchAssignUser(id) {
+    //保存当前的用户ID，防止切换的用户 cookie 失效 再切回来
+    let currUserId = user.id
+    let resume = await resumeUser(user, id)
+    if (!resume) {
+        await resumeUser(user, currUserId)
+    }
+}
+
+watch(() => user.id, id => users.value = userList(id))
+
 
 const login = defineAsyncComponent(() => import('./components/Login.vue'))
 const list = defineAsyncComponent(() => import('./components/List.vue'))
 const uploader = defineAsyncComponent(() => import('./components/Uploader.vue'))
 const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
+
 
 
 </script>
@@ -95,7 +98,7 @@ const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
     <a-config-provider :locale="zhCN">
         <template v-if="user.name && user.avatar">
             <a-page-header class="userinfo"
-            :title="user.name"
+                           :title="user.name"
                            :sub-title="user.profile"
                            :avatar="{ src: player.cover || user.avatar, size: 'large' }"
                            :class="{ playing: !!player.id }">
@@ -104,6 +107,24 @@ const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
                            color="blue">♂︎</a-tag>
                     <a-tag v-else
                            color="pink">♀︎</a-tag>
+                </template>
+                <template #extra>
+                    <div id="multi-user">
+                        <a-tooltip title="登录新账号"
+                                   placement="bottom">
+                            <a-avatar @click="switchUser(user)">╋</a-avatar>
+                        </a-tooltip>
+
+                        <template v-if="users.length">
+                            <a-tooltip v-for="u in users"
+                                       :title="`切换【${u.name}】`"
+                                       placement="bottom">
+                                <a-avatar :src="u.avatar"
+                                          @click="switchAssignUser(u.id)" />
+                            </a-tooltip>
+                        </template>
+
+                    </div>
                 </template>
             </a-page-header>
             <a-tabs :animated="true"
@@ -190,8 +211,18 @@ const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
     color: #1890ff
 }
 
-.playing .ant-avatar img {
+.playing .ant-page-header-heading-left .ant-avatar img {
     animation: turn 5s linear infinite;
+}
+
+#multi-user .ant-avatar {
+    cursor: pointer;
+    opacity: .3;
+    transition: all .2s ease-in-out;
+}
+
+#multi-user .ant-avatar:hover {
+    opacity: 1;
 }
 
 @keyframes turn {

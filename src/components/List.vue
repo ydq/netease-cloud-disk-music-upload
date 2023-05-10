@@ -1,6 +1,7 @@
 <script setup>
 import { inject, onMounted, reactive, watch } from 'vue'
-import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '@/scripts/api.js'
+import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '@/js/api.js'
+import { checkLogin } from '@/js/users.js'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { message, Modal } from 'ant-design-vue'
@@ -36,12 +37,11 @@ const pagination = reactive({
     size: 'normal',
     total: 0,
     hideOnSinglePage: true,
-    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 250) / 40)),
+    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 250) / 44)),
     pageSizeOptions: ['10', '20', '30', '50', '100'],
     current: 1
 })
 
-const checkLogin = inject('checkLogin')
 const player = inject('player')
 const user = inject('user')
 
@@ -54,7 +54,7 @@ const loadData = async (pageopt, autoRetry = true) => {
     let resp = await cloudGet({ limit: pageopt.pageSize, offset: (pageopt.current - 1) * pageopt.pageSize })
     if (!validCode.includes(resp.code)) {
         if (autoRetry) {
-            await checkLogin()
+            await checkLogin(user)
             loadData(pageopt, false)
         } else {
             message.warn('获取网盘数据失败，请稍后重试或者要不试试重新登录～')
@@ -174,6 +174,9 @@ watch(() => player.percent, percent => {
         }
     }
 })
+
+
+watch(()=>user.id,id=> reload())
 
 /**
  * 批量下载
@@ -353,10 +356,14 @@ onMounted(reload)
             </template>
             <template v-else-if="column.dataIndex == 'songName'">
                 <a-space size="small">
-                    <a-popover :title="'点击'+(record.playing?'停止播放':'播放当前音乐')" placement="topLeft" arrow-point-at-center>
+                    <a-popover :title="'点击' + (record.playing ? '停止播放' : '播放当前音乐')"
+                               placement="topLeft"
+                               arrow-point-at-center>
                         <template #content>
-                            <a-row type="flex" :gutter="10">
-                                <a-col :flex="1"><img :src='record.simpleSong.al.picUrl' width="120"/></a-col>
+                            <a-row type="flex"
+                                   :gutter="10">
+                                <a-col :flex="1"><img :src='record.simpleSong.al.picUrl'
+                                         width="120" /></a-col>
                                 <a-col :flex="auto">
                                     <a-list size="small">
                                         <a-list-item>标题：{{ record.simpleSong.name || record.songName }}</a-list-item>
@@ -365,17 +372,17 @@ onMounted(reload)
                                     </a-list>
                                 </a-col>
                             </a-row>
-                            
+
                         </template>
                         <a-progress @click.stop="play(record)"
                                     type="circle"
                                     :percent="record.playing && record.percent || 0"
                                     :width="cloud.progressWidth"
-                                    :class="{playing:record.playing}"
+                                    :class="{ playing: record.playing }"
                                     trailColor="#ddd">
                             <template #format>
                                 <a-avatar :size="20"
-                                :src='record.simpleSong.al.picUrl'></a-avatar>
+                                          :src='record.simpleSong.al.picUrl'></a-avatar>
                             </template>
                         </a-progress>
                     </a-popover>
@@ -459,17 +466,18 @@ onMounted(reload)
 .match-edit .ant-input-group-compact {
     display: flex;
 }
-.ant-progress.playing{
+
+.ant-progress.playing {
     border-radius: 50%;
     animation: wave 1s linear infinite;
 }
 
 @keyframes wave {
-    0%{
-        box-shadow: 0 0 0 0px #fff,0 0 0 0px rgba(255,0,0,0),0 0 0 2px #fff, 0 0 0 3px red;
+    0% {
+        box-shadow: 0 0 0 0px #fff, 0 0 0 0px rgba(255, 0, 0, 0), 0 0 0 2px #fff, 0 0 0 3px red;
     }
-    100%{
-        box-shadow: 0 0 0 2px #fff,0 0 0 3px red,0 0 0 5px #fff, 0 0 0 6px rgba(255,0,0,0);
+
+    100% {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 3px red, 0 0 0 5px #fff, 0 0 0 6px rgba(255, 0, 0, 0);
     }
-}
-</style>
+}</style>

@@ -22,9 +22,13 @@ const spectrum = {
 const spectrumInit = (audio, canvas) => {
     canvas.height = spectrum.canvasHeight = canvas.clientHeight * 2
     canvas.width = spectrum.canvasWidth = canvas.clientWidth * 2
-    let audioCtx = new AudioContext()
     spectrum.ctx = canvas.getContext("2d")
+    if (spectrum.analyser != null) {
+        //已经初始化过了，无需再次初始化
+        return;
+    }
     spectrum.meterNum = Math.round(spectrum.canvasWidth / (spectrum.meterWidth + spectrum.gap))
+    let audioCtx = new AudioContext()
     spectrum.analyser = audioCtx.createAnalyser()
     audioCtx.createMediaElementSource(audio).connect(spectrum.analyser)
     spectrum.analyser.connect(audioCtx.destination)

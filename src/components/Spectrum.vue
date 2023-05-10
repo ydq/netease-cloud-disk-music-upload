@@ -1,5 +1,5 @@
 <script setup>
-import { spectrumInit } from '@/scripts/spectrum.js'
+import { spectrumInit } from '@/js/spectrum.js'
 import { onMounted, ref } from 'vue';
 
 const props = defineProps(['audio'])

@@ -3,7 +3,7 @@ import { ArrayBuffer as MD5 } from 'spark-md5'
 import { parseBuffer as metaData } from 'music-metadata'
 import { Buffer } from 'buffer'
 import { inject, reactive, watch } from 'vue'
-import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '@/scripts/api.js'
+import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '@/js/api.js'
 import { message } from 'ant-design-vue'
 import 'ant-design-vue/es/message/style/css'
 
@@ -77,6 +77,27 @@ const file2ArrayBuffer = file => {
 }
 
 /**
+ * 批量上传全部未上传的文件
+ */
+const uploadAll = async () => {
+    let cnt = 0;
+    for (let i in uploader.files) {
+        if (uploader.files[i].percent == null) {
+            cnt++;
+            //批量上传不自动重试
+            await upload(i, false)
+        }
+    }
+    if (cnt > 0) {
+        let fail = uploader.files.filter(d => d.percent == null).length
+        message.info(`自动上传${cnt}个项目，失败${fail}个`)
+    } else {
+        message.info('列表中似乎没有需要上传的项目')
+    }
+
+}
+
+/**
  * 上传列表中的指定文件
  */
 const upload = async (i, autoRetry = true) => {
@@ -100,7 +121,7 @@ const upload = async (i, autoRetry = true) => {
         data.percent = null
         if (autoRetry) {
             message.info(retryMsg)
-            upload(i, false)
+            await upload(i, false)
         } else {
             message.warn(`上传前置检查${failSuffix}`)
         }
@@ -113,7 +134,7 @@ const upload = async (i, autoRetry = true) => {
         data.percent = null
         if (autoRetry) {
             message.info(retryMsg)
-            upload(i, false)
+            await upload(i, false)
         } else {
             message.warn(`获取上传Token${failSuffix}`)
         }
@@ -134,7 +155,7 @@ const upload = async (i, autoRetry = true) => {
             data.percent = null
             if (autoRetry) {
                 message.info(retryMsg)
-                upload(i, false)
+                await upload(i, false)
             } else {
                 message.warn(`文件上传${failSuffix}`)
             }
@@ -155,7 +176,7 @@ const upload = async (i, autoRetry = true) => {
         data.percent = null
         if (autoRetry) {
             message.info(retryMsg)
-            upload(i, false)
+            await upload(i, false)
         } else {
             message.warn(`更新文件信息${failSuffix}`)
         }
@@ -171,7 +192,7 @@ const upload = async (i, autoRetry = true) => {
         data.percent = null
         if (autoRetry) {
             message.info(retryMsg)
-            upload(i, false)
+            await upload(i, false)
         } else {
             message.warn(`保存到网盘${failSuffix}`)
         }
@@ -214,6 +235,7 @@ const progressColor = { '0%': '#108ee9', '100%': '#87d068', }
 
 
 const player = inject('player')
+const user = inject('user')
 
 const play = item => {
     if (player.id != item.filename) {
@@ -241,6 +263,8 @@ watch(() => player.percent, percent => {
         .filter(item => item.filename == player.id)
         .forEach(item => item.playPercent = percent)
 })
+//切换账号后 将上传列表置空
+watch(() => user.id, id => uploader.files = [])
 
 
 </script>
@@ -259,22 +283,29 @@ watch(() => player.percent, percent => {
                  :columns="columns">
             <template #title>
 
-                <label for="fileInput">
-                    <a-tooltip title="选择文件">
-                        <span class="ant-btn ant-btn-sm">+</span>
+                <a-space>
+                    <a-tooltip title="全部上传">
+                        <a-button size="small"
+                                  @click="uploadAll"
+                                  :disabled="uploader.files.length == 0">ALL↑</a-button>
                     </a-tooltip>
+                    <label for="fileInput">
+                        <a-tooltip title="选择文件">
+                            <span class="ant-btn ant-btn-sm">+</span>
+                        </a-tooltip>
 
-                    <input id="fileInput"
-                           type="file"
-                           accept=".mp3,.flac,.ape,.wma,.wav,.ogg,.aac"
-                           multiple
-                           @change="changeFile"
-                           :key="uploader.filesKey" />
+                        <input id="fileInput"
+                               type="file"
+                               accept=".mp3,.flac,.ape,.wma,.wav,.ogg,.aac"
+                               multiple
+                               @change="changeFile"
+                               :key="uploader.filesKey" />
 
-                    <a-typography-text type="secondary">
-                        点此 <b>选择文件</b>（支持多选） 或者 将 <b>文件拖放</b> 至下方区域以添加至上传列表
-                    </a-typography-text>
-                </label>
+                        <a-typography-text type="secondary">
+                            点此 <b>选择文件</b>（支持多选） 或者 将 <b>文件拖放</b> 至下方区域以添加至上传列表（上传期间请勿切换账号，否则可能导致不可预料的后果）
+                        </a-typography-text>
+                    </label>
+                </a-space>
 
             </template>
             <template #bodyCell="{ column, record, text, index }">
@@ -290,12 +321,12 @@ watch(() => player.percent, percent => {
                                     trailColor="#ddd">
                             <template #format>
                                 <i class="icn"
-                                :class="record.playing ? 'stop' : 'play'"></i>
+                                   :class="record.playing ? 'stop' : 'play'"></i>
                             </template>
                         </a-progress>
                         <a-input v-if="editableData[record.filename]"
-                                size="small"
-                                v-model:value="editableData[record.filename][column.dataIndex]" />
+                                 size="small"
+                                 v-model:value="editableData[record.filename][column.dataIndex]" />
                         <template v-else>
                             {{ text }}
                         </template>
@@ -393,9 +424,10 @@ watch(() => player.percent, percent => {
 }
 
 label[for="fileInput"] {
-    display: block;
+    display: inline-block;
     cursor: pointer;
     overflow: hidden;
+    vertical-align: top;
 }
 
 #fileInput {
