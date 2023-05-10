@@ -65,31 +65,33 @@ audio.onerror = e => {
 provide('player', player);
 provide('user', user);
 
+function reloadUserList() {
+    users.value = userList(user.id)
+}
+
 onMounted(async () => {
     let check = await checkLogin(user)
     if (check) {
-        users.value = userList(user.id)
+        reloadUserList()
     }
 })
 
 
-async function switchAssignUser(id) {
+async function changeUser({ oldId, state }) {
     //保存当前的用户ID，防止切换的用户 cookie 失效 再切回来
-    let currUserId = user.id
-    let resume = await resumeUser(user, id)
-    if (!resume) {
-        await resumeUser(user, currUserId)
+    if (!state) {
+        await resumeUser(user, oldId)
     }
 }
 
-watch(() => user.id, id => users.value = userList(id))
+watch(() => user.id, reloadUserList)
 
 
 const login = defineAsyncComponent(() => import('./components/Login.vue'))
 const list = defineAsyncComponent(() => import('./components/List.vue'))
 const uploader = defineAsyncComponent(() => import('./components/Uploader.vue'))
 const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
-
+const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
 
 
 </script>
@@ -116,12 +118,12 @@ const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
                         </a-tooltip>
 
                         <template v-if="users.length">
-                            <a-tooltip v-for="u in users"
-                                       :title="`切换【${u.name}】`"
-                                       placement="bottom">
-                                <a-avatar :src="u.avatar"
-                                          @click="switchAssignUser(u.id)" />
-                            </a-tooltip>
+
+                            <user-card v-for="u in users"
+                                       :user-context="user"
+                                       :user="u"
+                                       @change="changeUser"
+                                       @delete="reloadUserList" />
                         </template>
 
                     </div>

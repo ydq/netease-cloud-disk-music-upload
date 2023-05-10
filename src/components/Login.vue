@@ -1,8 +1,8 @@
 <script setup>
 import { loginKey, checkScan, validCode } from '@/js/api.js'
-import { checkLogin, resumeUser, userList } from '@/js/users.js'
+import { checkLogin, userList } from '@/js/users.js'
 import QRCode from 'qrcode'
-import { inject, onMounted, reactive, ref } from 'vue';
+import { defineAsyncComponent, inject, onMounted, reactive, ref } from 'vue';
 import { message } from 'ant-design-vue'
 import 'ant-design-vue/es/message/style/css'
 import 'ant-design-vue/es/modal/style/css'
@@ -59,13 +59,18 @@ onMounted(async () => {
 
 })
 
-const quickLogin = async loginUser => {
-    let login = await resumeUser(user, loginUser.id)
-    if (!login) {
-        message.info(`快速登录【${loginUser.name}】失败，可能是 Cookie 已过期，请使用官网或扫码登录`)
+async function quickLogin({ usr, state }) {
+    if (!state) {
+        message.info(`快速登录【${usr.name}】失败，可能是 Cookie 已过期，请使用官网或扫码登录`)
         users.value = await userList()
     }
 }
+
+const removeHistory = async () => {
+    users.value = await userList()
+}
+
+const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
 
 </script>
 <template>
@@ -99,17 +104,15 @@ const quickLogin = async loginUser => {
                 <p>
                     <a-typography-text type="secondary">您曾经登录过以下账号 可以尝试快速登录</a-typography-text>
                 </p>
-                <div>
+                <div style="overflow: hidden;">
                     <a-space size="middle"
                              align="center">
-                        <a-tooltip v-for="u in users"
-                                   :title="`点击登录【${u.name}】`"
-                                   placement="bottom">
-                            <a-avatar :src="u.avatar"
-                                      size="large"
-                                      @click="quickLogin(u)"
-                                      style="cursor: pointer;box-shadow: 0 0 0 1px #ccc;"></a-avatar>
-                        </a-tooltip>
+                        <user-card v-for="u in users"
+                                   :user-context="user"
+                                   :user="u"
+                                   size="large"
+                                   @change="quickLogin"
+                                   @delete="removeHistory" />
                     </a-space>
                 </div>
             </div>

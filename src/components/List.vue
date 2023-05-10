@@ -176,7 +176,7 @@ watch(() => player.percent, percent => {
 })
 
 
-watch(()=>user.id,id=> reload())
+watch(() => user.id, id => reload())
 
 /**
  * 批量下载
@@ -480,4 +480,5 @@ onMounted(reload)
     100% {
         box-shadow: 0 0 0 2px #fff, 0 0 0 3px red, 0 0 0 5px #fff, 0 0 0 6px rgba(255, 0, 0, 0);
     }
-}</style>
+}
+</style>

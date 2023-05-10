@@ -56,11 +56,10 @@ const storeCurrenUser = async (user) => {
     let cookies = await chrome.cookies.getAll({ domain: 'music.163.com', path: '/' })
     //过滤出仅需要的 cookie 信息 并写入缓存
     let usefulCookie = cookies
-        .filter(c => c.path == '/' && ['.163.com', 'music.163.com', '.music.163.com'].includes(c.domain))
+        .filter(c => c.path == '/' && ['music.163.com', '.music.163.com'].includes(c.domain))
         .map(c => {
             let { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, value } = c;
-            let url = (secure ? 'https' : 'http') + '://' + domain.substring(domain.charAt(0) == '.' ? 1 : 0)
-            return { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, url, value }
+            return { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, value, url: 'https://music.163.com' }
         });
     localStorage['userCookie-' + user.id] = JSON.stringify(usefulCookie)
     return usefulCookie;
@@ -93,15 +92,7 @@ const switchUser = async (user) => {
 const resumeUser = async (currUser, assignUserId) => {
     await Promise.all(JSON.parse(localStorage[`userCookie-${assignUserId}`] || '[]').map(async cookie => chrome.cookies.set(cookie)))
     let check = await checkLogin(currUser)
-    if (!check) {
-        localStorage.removeItem(`userCookie-${assignUserId}`)
-        //获取 localStorage 中历史用户列表
-        let users = JSON.parse(localStorage.userList || '[]')
-        //删除要恢复的用户信息
-        users.forEach((usr, idx, arr) => usr.id == assignUserId && arr.splice(idx, 1))
-        //写入缓存
-        localStorage.userList = JSON.stringify(users)
-    }
+    check || delUser(assignUserId)
     return check;
 }
 
@@ -111,4 +102,21 @@ const userList = (currUid) => {
     return users;
 }
 
-export { checkLogin, switchUser, resumeUser, userList }
+
+const delUser = uid => {
+    //删除 localStorage 中历史指定用户缓存
+    localStorage.removeItem(`userCookie-${uid}`)
+    //获取 localStorage 中历史用户列表
+    let users = JSON.parse(localStorage.userList || '[]')
+    //删除要恢复的用户信息
+    users.forEach((usr, idx, arr) => usr.id == uid && arr.splice(idx, 1))
+    //写入缓存
+    if(users.length > 0){
+        localStorage.userList = JSON.stringify(users)
+    } else {
+        //如果都没有用户了 那就清理本地缓存
+        localStorage.removeItem('userList')
+    }
+}
+
+export { checkLogin, switchUser, resumeUser, delUser, userList }
