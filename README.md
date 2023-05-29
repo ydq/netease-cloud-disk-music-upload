@@ -20,7 +20,7 @@
 
 #### 插件安装
 
-- 应用商店安装：[Google Chrome](https://chrome.google.com/webstore/detail/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90%E4%BA%91%E7%9B%98%E7%AE%A1%E7%90%86/gnfemfddeadngnfhcpbdhlgbbnokokcg)｜[Microsoft Edge](https://microsoftedge.microsoft.com/addons/detail/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90%E4%BA%91%E7%9B%98%E7%AE%A1%E7%90%86/ejngoibgpebbaodiaccaifkipoppaaff) 
+- 应用商店安装：[Google Chrome](https://chrome.google.com/webstore/detail/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90%E4%BA%91%E7%9B%98%E7%AE%A1%E7%90%86/gnfemfddeadngnfhcpbdhlgbbnokokcg)｜[Microsoft Edge](https://microsoftedge.microsoft.com/addons/detail/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90%E4%BA%91%E7%9B%98%E7%AE%A1%E7%90%86/ejngoibgpebbaodiaccaifkipoppaaff) | [Firefox](https://addons.mozilla.org/zh-CN/firefox/addon/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90%E4%BA%91%E7%9B%98%E7%AE%A1%E7%90%86/)
 - 源码本地自己构建打包
 
 

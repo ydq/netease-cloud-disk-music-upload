@@ -42,7 +42,7 @@ const checkLogin = async (user) => {
  */
 const storeCurrenUser = async (user) => {
     //获取 localStorage 中历史用户列表
-    let users = JSON.parse(localStorage.userList || '[]')
+    let users = JSON.parse(localStorage?.userList ?? '[]')
     //获取当前登录的用户信息
     let { id, name, avatar } = user
     //去重
@@ -53,10 +53,10 @@ const storeCurrenUser = async (user) => {
     localStorage.userList = JSON.stringify(users)
 
     //获取当前登录用户的所有 cookie 信息
-    let cookies = await chrome.cookies.getAll({ domain: 'music.163.com', path: '/' })
+    let cookies = await cookieOps('getAll', { domain: 'music.163.com', path: '/' })
     //过滤出仅需要的 cookie 信息 并写入缓存
     let usefulCookie = cookies
-        .filter(c => c.path == '/' && ['music.163.com', '.music.163.com'].includes(c.domain))
+        .filter(c => c.path == '/' && ['music.163.com', '.music.163.com'].includes(c?.domain ?? '-'))
         .map(c => {
             let { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, value } = c;
             return { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, value, url: 'https://music.163.com' }
@@ -74,7 +74,7 @@ const switchUser = async (user) => {
     //执行remove cookie
     await Promise.all(userCookie.map(async cookie => {
         let { name, url } = cookie
-        return chrome.cookies.remove({ name, url })
+        return cookieOps('remove', { name, url })
     }))
     //登出用户
     Object.assign(user, {
@@ -90,7 +90,7 @@ const switchUser = async (user) => {
  * 恢复一个账号的登录状态，如果恢复失败则从历史缓存列表中清除当前用户
  */
 const resumeUser = async (currUser, assignUserId) => {
-    await Promise.all(JSON.parse(localStorage[`userCookie-${assignUserId}`] || '[]').map(async cookie => chrome.cookies.set(cookie)))
+    await Promise.all(JSON.parse(localStorage[`userCookie-${assignUserId}`] || '[]').map(async cookie => cookieOps('set',cookie)))
     let check = await checkLogin(currUser)
     check || delUser(assignUserId)
     return check;
@@ -111,12 +111,28 @@ const delUser = uid => {
     //删除要恢复的用户信息
     users.forEach((usr, idx, arr) => usr.id == uid && arr.splice(idx, 1))
     //写入缓存
-    if(users.length > 0){
+    if (users.length > 0) {
         localStorage.userList = JSON.stringify(users)
     } else {
         //如果都没有用户了 那就清理本地缓存
         localStorage.removeItem('userList')
     }
 }
+
+/**
+ * 兼容Firefox MV2
+ */
+const cookieOps = (method, opt) => {
+    if (/Firefox/.test(navigator.userAgent)) {
+        //Firefox 暂不支持 mv3 需要用 callback
+        return new Promise((resolve, reject) => {
+            browser.cookies[method](opt, data => resolve(data))
+        })
+    } else {
+        //chrome 和 Edge 支持 mv3 支持直接返回 promise
+        return chrome.cookies[method](opt)
+    }
+}
+
 
 export { checkLogin, switchUser, resumeUser, delUser, userList }
