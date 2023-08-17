@@ -4,8 +4,6 @@ import { checkLogin, userList } from '@/js/users.js'
 import QRCode from 'qrcode'
 import { defineAsyncComponent, inject, onMounted, reactive, ref } from 'vue';
 import { message } from 'ant-design-vue'
-import 'ant-design-vue/es/message/style/css'
-import 'ant-design-vue/es/modal/style/css'
 
 const user = inject('user')
 
@@ -77,7 +75,7 @@ const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
     <Teleport to="body">
         <a-modal title="登录网易云音乐"
                  cancel-text="官网登录"
-                 :visible="qr.show"
+                 :open="qr.show"
                  :closable="false"
                  :width="380"
                  :mask-closable="false"
@@ -90,7 +88,7 @@ const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
                  :class="{ timeout: qr.url && qr.code == 800 }">
                 <a-tooltip v-if="qr.avatar"
                            :title="qr.nickname"
-                           :defaultVisible="true"
+                           :open="true"
                            placement="top">
                     <a-avatar :src="qr.avatar"
                               :size="100"></a-avatar>

@@ -5,7 +5,6 @@ import { Buffer } from 'buffer'
 import { inject, reactive, watch } from 'vue'
 import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '@/js/api.js'
 import { message } from 'ant-design-vue'
-import 'ant-design-vue/es/message/style/css'
 
 window.Buffer = Buffer;
 
@@ -14,7 +13,6 @@ const uploader = reactive({
     filesKey: Date.now(),
     drag: false,
     progressWidth: 24,
-    chunkSize: 2097152,//2M = 1024*2048
 })
 
 const editableData = reactive({})
@@ -290,10 +288,6 @@ watch(() => user.id, id => uploader.files = [])
                                   :disabled="uploader.files.length == 0">ALL↑</a-button>
                     </a-tooltip>
                     <label for="fileInput">
-                        <a-tooltip title="选择文件">
-                            <span class="ant-btn ant-btn-sm">+</span>
-                        </a-tooltip>
-
                         <input id="fileInput"
                                type="file"
                                accept=".mp3,.flac,.ape,.wma,.wav,.ogg,.aac"
@@ -302,7 +296,9 @@ watch(() => user.id, id => uploader.files = [])
                                :key="uploader.filesKey" />
 
                         <a-typography-text type="secondary">
-                            点此 <b>选择文件</b>（支持多选） 或者 将 <b>文件拖放</b> 至下方区域以添加至上传列表（上传期间请勿切换账号，否则可能导致不可预料的后果）
+                            <a-tooltip title="选择文件" placement="bottomLeft">
+                                <span style="text-decoration: underline;">点此 <b>选择文件</b>（支持多选）</span> 或者 将 <b>文件拖放</b> 至下方区域以添加至上传列表（上传期间请勿切换账号，否则可能导致不可预料的后果）
+                            </a-tooltip> 
                         </a-typography-text>
                     </label>
                 </a-space>
@@ -317,7 +313,7 @@ watch(() => user.id, id => uploader.files = [])
                         <a-progress @click.stop="play(record)"
                                     type="circle"
                                     :percent="record.playing && record.playPercent || 0"
-                                    :width="uploader.progressWidth"
+                                    :size="uploader.progressWidth"
                                     trailColor="#ddd">
                             <template #format>
                                 <i class="icn"
@@ -393,6 +389,21 @@ watch(() => user.id, id => uploader.files = [])
     </div>
 </template>
 <style>
+
+.icn.play {
+    width: 0;
+    vertical-align: bottom;
+    border-left-width: 8px;
+    border-left-color: currentColor;
+    transform: translate(4px, 0px);
+}
+
+.icn.stop {
+    width: 10px;
+    height: 10px;
+    border-width: 2px;
+    border-color: currentColor;
+}
 .drop-container {
     position: relative;
     overflow: hidden;

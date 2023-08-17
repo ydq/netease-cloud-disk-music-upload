@@ -5,8 +5,6 @@ import { checkLogin } from '@/js/users.js'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { message, Modal } from 'ant-design-vue'
-import 'ant-design-vue/es/message/style/css'
-import 'ant-design-vue/es/modal/style/css'
 import axios from 'axios'
 
 dayjs.extend(relativeTime)
@@ -37,7 +35,7 @@ const pagination = reactive({
     size: 'normal',
     total: 0,
     hideOnSinglePage: true,
-    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 250) / 44)),
+    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 250) / 42)),
     pageSizeOptions: ['10', '20', '30', '50', '100'],
     current: 1
 })
@@ -343,8 +341,8 @@ onMounted(reload)
                            placement="top">
                     <a-progress @click.stop="download([record])"
                                 type="circle"
+                                :size="cloud.progressWidth"
                                 :percent="record.dlPercent || 0"
-                                :width="cloud.progressWidth"
                                 trailColor="#ddd">
                         <template #format="percent">
                             <span v-if="percent == 0">↓</span>
@@ -376,8 +374,8 @@ onMounted(reload)
                         </template>
                         <a-progress @click.stop="play(record)"
                                     type="circle"
+                                    :size="cloud.progressWidth"
                                     :percent="record.playing && record.percent || 0"
-                                    :width="cloud.progressWidth"
                                     :class="{ playing: record.playing }"
                                     trailColor="#ddd">
                             <template #format>

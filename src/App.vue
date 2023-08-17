@@ -3,7 +3,6 @@ import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import { defineAsyncComponent, onMounted, provide, reactive, ref, watch } from 'vue';
 import { checkLogin, switchUser, resumeUser, userList } from '@/js/users.js'
 import { message } from 'ant-design-vue'
-import 'ant-design-vue/es/message/style/css'
 
 
 const user = reactive({
@@ -129,8 +128,7 @@ const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
                     </div>
                 </template>
             </a-page-header>
-            <a-tabs :animated="true"
-                    size="small">
+            <a-tabs size="small">
                 <a-tab-pane key="list"
                             tab="网盘音乐列表">
                     <list />
@@ -194,25 +192,12 @@ const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
     color: #666;
 }
 
-.icn.play {
-    width: 0;
-    vertical-align: bottom;
-    border-left-width: 8px;
-    border-left-color: currentColor;
-    transform: translate(4px, -1px);
-}
-
-.icn.stop {
-    width: 10px;
-    height: 10px;
-    border-width: 2px;
-    border-color: currentColor;
-}
-
 .ant-progress:hover .icn {
     color: #1890ff
 }
-
+.ant-page-header{
+    background: transparent;
+}
 .playing .ant-page-header-heading-left .ant-avatar img {
     animation: turn 5s linear infinite;
 }
