@@ -1,7 +1,10 @@
+import { reactive } from "vue"
+
 /**
  * 频谱配置
  */
-const spectrum = {
+const spectrum = reactive({
+    isPlaying: false,
     canvasWidth: null,
     canvasHeight: null,
     ctx: null,
@@ -15,7 +18,7 @@ const spectrum = {
     capYPosition: [],
     fromColor: '#E0EEDA',
     toColor: '#CEE2F3'
-}
+})
 /**
  * 初始化频谱
  */
@@ -35,7 +38,7 @@ const spectrumInit = (audio, canvas) => {
     spectrum.gradient = spectrum.ctx.createLinearGradient(0, 0, 0, spectrum.canvasHeight)
     spectrum.gradient.addColorStop(0, spectrum.fromColor)
     spectrum.gradient.addColorStop(1, spectrum.toColor)
-    spectrumRenderFrame();
+    spectrum.isPlaying && spectrumRenderFrame();
 }
 /**
  * 循环绘制频谱
@@ -76,7 +79,11 @@ const spectrumRenderFrame = () => {
             spectrum.canvasHeight
         );
     }
-    requestAnimationFrame(spectrumRenderFrame)
+    if (spectrum.isPlaying) {
+        requestAnimationFrame(spectrumRenderFrame)
+    } else {
+        spectrum.ctx.clearRect(0, 0, spectrum.canvasWidth, spectrum.canvasHeight)
+    }
 }
 
-export { spectrumInit }
+export { spectrum, spectrumInit, spectrumRenderFrame }

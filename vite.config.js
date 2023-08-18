@@ -11,6 +11,9 @@ const commonCfg = defineConfig({
     plugins: [
         vue()
     ],
+    build:{
+        chunkSizeWarningLimit: 2048 //这是浏览器插件，没必要限制但文件大小
+    }
 })
 
 export default ({ command, mode }) => {

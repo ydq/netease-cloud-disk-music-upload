@@ -35,7 +35,7 @@ const pagination = reactive({
     size: 'normal',
     total: 0,
     hideOnSinglePage: true,
-    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 250) / 42)),
+    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 200) / 32)),
     pageSizeOptions: ['10', '20', '30', '50', '100'],
     current: 1
 })
@@ -342,8 +342,7 @@ onMounted(reload)
                     <a-progress @click.stop="download([record])"
                                 type="circle"
                                 :size="cloud.progressWidth"
-                                :percent="record.dlPercent || 0"
-                                trailColor="#ddd">
+                                :percent="record.dlPercent || 0">
                         <template #format="percent">
                             <span v-if="percent == 0">↓</span>
                             <span v-else-if="percent < 100">{{ percent }}</span>
@@ -361,7 +360,7 @@ onMounted(reload)
                             <a-row type="flex"
                                    :gutter="10">
                                 <a-col :flex="1"><img :src='record.simpleSong.al.picUrl'
-                                         width="120" /></a-col>
+                                         width="90" /></a-col>
                                 <a-col :flex="auto">
                                     <a-list size="small">
                                         <a-list-item>标题：{{ record.simpleSong.name || record.songName }}</a-list-item>
@@ -376,8 +375,7 @@ onMounted(reload)
                                     type="circle"
                                     :size="cloud.progressWidth"
                                     :percent="record.playing && record.percent || 0"
-                                    :class="{ playing: record.playing }"
-                                    trailColor="#ddd">
+                                    :class="{ playing: record.playing }">
                             <template #format>
                                 <a-avatar :size="20"
                                           :src='record.simpleSong.al.picUrl'></a-avatar>
@@ -476,7 +474,20 @@ onMounted(reload)
     }
 
     100% {
-        box-shadow: 0 0 0 2px #fff, 0 0 0 3px red, 0 0 0 5px #fff, 0 0 0 6px rgba(255, 0, 0, 0);
+        box-shadow: 0 0 0 2px #fff, 0 0 0 3px red, 0 0 0 5px #fff, 0 0 0 6px rgba(255, 255, 255, 0);
     }
+}
+
+@media (prefers-color-scheme: dark) {
+    @keyframes wave {
+    0% {
+        box-shadow: 0 0 0 0px #000, 0 0 0 0px rgba(255, 0, 0, 0), 0 0 0 2px #000, 0 0 0 3px red;
+    }
+
+    100% {
+        box-shadow: 0 0 0 2px #000, 0 0 0 3px red, 0 0 0 5px #000, 0 0 0 6px rgba(0, 0, 0, 0);
+    }
+}
+
 }
 </style>

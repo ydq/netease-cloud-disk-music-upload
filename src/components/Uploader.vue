@@ -407,7 +407,7 @@ watch(() => user.id, id => uploader.files = [])
 .drop-container {
     position: relative;
     overflow: hidden;
-    min-height: calc(100vh - 150px);
+    min-height: calc(100vh - 120px);
 }
 
 @keyframes dragBorderAni {

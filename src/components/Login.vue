@@ -5,8 +5,10 @@ import QRCode from 'qrcode'
 import { defineAsyncComponent, inject, onMounted, reactive, ref } from 'vue';
 import { message } from 'ant-design-vue'
 
+//从App.vue 中注入的 当前的用户
 const user = inject('user')
 
+//如果用户使用 二维码登录 则该对象为 二维码登录需要的一些信息
 const qr = reactive({
     show: false,
     key: '',
@@ -17,8 +19,10 @@ const qr = reactive({
     nickname: ''
 })
 
+//多用户管理时 从 localStorage 中获取的用户列表信息
 const users = ref([])
 
+//重新生成二维码
 async function renewQrcode() {
     let resp = await loginKey()
     qr.key = resp.unikey
@@ -26,6 +30,7 @@ async function renewQrcode() {
     await checkQrScan()
 }
 
+//检查用户二维码扫码的状态
 async function checkQrScan() {
     let resp = await checkScan({ key: qr.key })
     if (!validCode.includes(resp.code)) {
@@ -49,14 +54,16 @@ async function checkQrScan() {
     setTimeout(checkQrScan, 1500)
 }
 
+//用户点击使用官网登录时 直接跳转到 网易云官网去
 const officialWebsiteLogin = () => location.replace('https://music.163.com')
 
 onMounted(async () => {
     users.value = await userList()
+    //防止闪烁，延迟一下 显示 登录窗口的 Modal 窗口
     setTimeout(() => qr.show = true, 300)
-
 })
 
+//用户点 多用户列表卡快速登录之后的 callback 如果登录失败（Cookie失效）则提示一下，并刷新一下多用户的列表
 async function quickLogin({ usr, state }) {
     if (!state) {
         message.info(`快速登录【${usr.name}】失败，可能是 Cookie 已过期，请使用官网或扫码登录`)
@@ -64,10 +71,12 @@ async function quickLogin({ usr, state }) {
     }
 }
 
+//移除指定的历史多用户记录之后的回调函数，需要刷新一下多用户的列表
 const removeHistory = async () => {
     users.value = await userList()
 }
 
+//多用户登录时的 用户卡片组件
 const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
 
 </script>

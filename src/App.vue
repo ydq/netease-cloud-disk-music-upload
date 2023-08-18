@@ -2,9 +2,9 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import { defineAsyncComponent, onMounted, provide, reactive, ref, watch } from 'vue';
 import { checkLogin, switchUser, resumeUser, userList } from '@/js/users.js'
-import { message } from 'ant-design-vue'
+import { message, theme } from 'ant-design-vue'
 
-
+//当前用户的信息 组入给子组件，便于根据当前登录的用户获取一些接口信息
 const user = reactive({
     id: null,
     avatar: '',
@@ -13,14 +13,14 @@ const user = reactive({
     gender: 0
 })
 
-
-
+//支持多用户
 const users = ref([])
 
-
+//底层音频播放器
 const audio = new Audio()
 audio.crossOrigin = 'anonymous'
 
+//简单封装一下播放器 注入给子组件
 const player = reactive({
     id: null,
     src: null,
@@ -61,13 +61,12 @@ audio.onerror = e => {
 }
 
 
-provide('player', player);
-provide('user', user);
-
+//刷新多用户的用户列表（用户列表不显示当前用户）
 function reloadUserList() {
     users.value = userList(user.id)
 }
 
+//初始化时检查用户登录情况，如果已经登录了，则刷新一下用户列表
 onMounted(async () => {
     let check = await checkLogin(user)
     if (check) {
@@ -75,7 +74,7 @@ onMounted(async () => {
     }
 })
 
-
+//切换用户（从 localStorage 中 恢复 cookie 并写入到浏览器 以达到不用频繁扫码切换用户的目的）
 async function changeUser({ oldId, state }) {
     //保存当前的用户ID，防止切换的用户 cookie 失效 再切回来
     if (!state) {
@@ -83,9 +82,10 @@ async function changeUser({ oldId, state }) {
     }
 }
 
+//当切换用户时刷新一下用户列表（用户列表不显示当前用户）
 watch(() => user.id, reloadUserList)
 
-
+//一些子组件
 const login = defineAsyncComponent(() => import('./components/Login.vue'))
 const list = defineAsyncComponent(() => import('./components/List.vue'))
 const uploader = defineAsyncComponent(() => import('./components/Uploader.vue'))
@@ -93,10 +93,24 @@ const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
 const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
 
 
+
+
+
+//系统深色主题自动监听探测 并注入给下游组件使用
+const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+const isDark = ref(themeMedia.matches)
+themeMedia.addEventListener('change',e => isDark.value = e.matches);
+
+
+provide('player', player);
+provide('user', user);
+provide('isDark', isDark);//后续如果有一些自定义的元素需要根据深色主题定制效果可以使用这个
+
 </script>
 
 <template>
-    <a-config-provider :locale="zhCN">
+    <a-config-provider :locale="zhCN"
+                       :theme="{ algorithm: isDark?[theme.compactAlgorithm, theme.darkAlgorithm]:theme.compactAlgorithm }">
         <template v-if="user.name && user.avatar">
             <a-page-header class="userinfo"
                            :title="user.name"
@@ -195,9 +209,11 @@ const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
 .ant-progress:hover .icn {
     color: #1890ff
 }
-.ant-page-header{
+
+.ant-page-header {
     background: transparent;
 }
+
 .playing .ant-page-header-heading-left .ant-avatar img {
     animation: turn 5s linear infinite;
 }
@@ -219,6 +235,16 @@ const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
 
     100% {
         transform: rotate(360deg);
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        background-color: #141414;
+    }
+
+    .ant-table-row:nth-child(even) {
+        background-color: rgb(29, 29, 29);
     }
 }
 </style>
