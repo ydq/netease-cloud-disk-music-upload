@@ -1,5 +1,5 @@
 <script setup>
-import { inject, onMounted, reactive, watch } from 'vue'
+import { computed, inject, onMounted, reactive, watch } from 'vue'
 import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '@/js/api.js'
 import { checkLogin } from '@/js/users.js'
 import dayjs from 'dayjs'
@@ -10,23 +10,38 @@ import axios from 'axios'
 dayjs.extend(relativeTime)
 
 const cloud = reactive({
-    data: [],
-    offset: 0,
-    limit: 30,
+    allData: [],//完整的原始数据
+    filter: '',//本地搜索过滤
+    data: computed(() => {
+        //给到table 的数据
+        let data = cloud.allData
+        let filter = cloud.filter.replace(/\s+/ig, '').toLowerCase()
+        if (filter) {
+            cloud.loading = true
+            data = data.filter(record => {
+                return (record.simpleSong.name || record.songName || '').replace(/\s+/ig, '').toLowerCase().includes(filter)
+                    || (record.simpleSong?.ar?.[0]?.name || record.artist || '').replace(/\s+/ig, '').toLowerCase().includes(filter)
+                    || (record.simpleSong?.al?.name || record.album || '').replace(/\s+/ig, '').toLowerCase().includes(filter)
+            })
+            cloud.loading = false
+        }
+        pagination.total = data.length
+        return data;
+    }),
     loading: false,
     selectedRowKeys: [],
     progressWidth: 24,
     lrcs: null,
-    currLrc: null
+    currLrc: null,
 })
 
 const columns = [
-    { title: '下载', key: 'dl', width: 45 },
-    { title: '标题', dataIndex: 'songName', width: 200, ellipsis: true, },
-    { title: '歌手', dataIndex: 'artist', width: 200, ellipsis: true, },
-    { title: '专辑', dataIndex: 'album', width: 200, ellipsis: true, },
-    { title: '大小', dataIndex: 'fileSize', width: 100 },
-    { title: '上传时间', dataIndex: 'addTime', width: 120 },
+    { title: '下载', key: 'dl', width: 45, align: 'center' },
+    { title: '标题', dataIndex: 'songName', width: 200, ellipsis: true },
+    { title: '歌手', dataIndex: 'artist', width: 200, ellipsis: true },
+    { title: '专辑', dataIndex: 'album', width: 200, ellipsis: true },
+    { title: '大小', dataIndex: 'fileSize', width: 100, sorter: (a, b) => a.fileSize - b.fileSize },
+    { title: '上传时间', dataIndex: 'addTime', width: 120, sorter: (a, b) => a.addTime - b.addTime, sortDirections: ['ascend'] },
     { title: '操作', key: 'ops', width: 45 },
 ]
 
@@ -35,9 +50,9 @@ const pagination = reactive({
     size: 'normal',
     total: 0,
     hideOnSinglePage: true,
-    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 200) / 32)),
+    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 200) / 33)),
     pageSizeOptions: ['10', '20', '30', '50', '100'],
-    current: 1
+    // current: 1
 })
 
 const player = inject('player')
@@ -46,25 +61,29 @@ const user = inject('user')
 /**
  * 加载网盘分页列表数据
  */
-const loadData = async (pageopt, autoRetry = true) => {
+const loadData = async (offset, autoRetry = true) => {
     cloud.loading = true
     cloud.selectedRowKeys = []
-    let resp = await cloudGet({ limit: pageopt.pageSize, offset: (pageopt.current - 1) * pageopt.pageSize })
+    let resp = await cloudGet({ limit: 100, offset })
     if (!validCode.includes(resp.code)) {
         if (autoRetry) {
             await checkLogin(user)
-            loadData(pageopt, false)
+            loadData(offset, false)
         } else {
             message.warn('获取网盘数据失败，请稍后重试或者要不试试重新登录～')
         }
         return
     }
-    cloud.data = resp.data
-    pagination.total = resp.count
-    pagination.current = pageopt.current
-    pagination.pageSize = pageopt.pageSize
-    playStatus(player.id)
-    cloud.loading = false
+    if (offset == 0) {
+        cloud.allData = resp.data
+    } else {
+        cloud.allData = cloud.allData.concat(resp.data)
+    }
+    if (resp.data.length < 100) {
+        cloud.loading = false
+        return;
+    }
+    await loadData(offset + 100)
 }
 
 
@@ -74,7 +93,7 @@ const loadData = async (pageopt, autoRetry = true) => {
 const reload = async () => {
     pagination.current = 1
     cloud.selectedRowKeys = []
-    await loadData(pagination)
+    await loadData(0)
 }
 
 /**
@@ -89,7 +108,8 @@ const delData = () => {
         async onOk() {
             let resp = await cloudDel({ songIds: cloud.selectedRowKeys })
             if (validCode.includes(resp.code)) {
-                await loadData(pagination)
+                cloud.allData = cloud.allData.filter(record => !cloud.selectedRowKeys.includes(record.songId))
+                cloud.selectedRowKeys = []
                 message.success('删除云盘指定音乐成功')
             } else {
                 message.warn('删除云盘音乐失败，但重试几次或换个时间段再试没准会有奇效～')
@@ -112,7 +132,7 @@ const play = async item => {
         let resp = await songInfo({ ids: [item.songId] })
         if (validCode.includes(resp.code)) {
             getLyric(item.songId)
-            player.play(item.songId, resp.data[0].url, item.simpleSong.al.picUrl)
+            player.play(item.songId, resp.data[0].url, item.simpleSong?.al?.picUrl)
         } else {
             message.warn("获取链接地址失败，但重试几次或换个时间段再试没准会有奇效～")
         }
@@ -138,7 +158,7 @@ const getLyric = async id => {
 }
 
 const playStatus = id => {
-    cloud.data.forEach(item => {
+    cloud.allData.forEach(item => {
         if (item.songId == id) {
             item.percent = player.percent
             item.playing = true
@@ -162,7 +182,7 @@ watch(() => player.id, id => {
  * 刷新播放进度 和 歌词
  */
 watch(() => player.percent, percent => {
-    cloud.data
+    cloud.allData
         .filter(item => item.songId == player.id)
         .forEach(item => item.percent = percent)
     if (cloud.lrcs) {
@@ -181,7 +201,7 @@ watch(() => user.id, id => reload())
  */
 const batchDownload = () => {
     if (cloud.selectedRowKeys.length) {
-        download(cloud.data.filter(item => cloud.selectedRowKeys.includes(item.songId)))
+        download(cloud.allData.filter(item => cloud.selectedRowKeys.includes(item.songId)))
     }
 }
 
@@ -254,7 +274,7 @@ const match = async record => {
         //所以 如果播放器播放的是当前老的ID，则需要进行更新
         if (player.id == oldId) {
             player.id = newId
-            player.cover = record.simpleSong.al.picUrl
+            player.cover = record.simpleSong?.al?.picUrl
             getLyric(newId)//自动触发根据新的歌曲ID重新获取歌词
         }
         if (cloud.selectedRowKeys.includes(oldId)) {
@@ -291,10 +311,10 @@ onMounted(reload)
                      },
                  }
              }"
-             @change="loadData">
+             @change="page => Object.assign(pagination, page)">
         <template #title>
             <a-row type="flex">
-                <a-col flex="300px">
+                <a-col flex="400px">
                     <a-space>
                         <a-tooltip title="重新加载">
                             <a-button size="small"
@@ -319,6 +339,10 @@ onMounted(reload)
                         <span v-if="cloud.selectedRowKeys.length">
                             {{ `已选择 ${cloud.selectedRowKeys.length} 项` }}
                         </span>
+                        <a-input allowClear
+                                 placeholder="本地搜索 标题/歌手/专辑"
+                                 size="small"
+                                 v-model:value="cloud.filter"></a-input>
                     </a-space>
                 </a-col>
                 <a-col flex="auto">
@@ -352,40 +376,46 @@ onMounted(reload)
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'songName'">
-                <a-space size="small">
-                    <a-popover :title="'点击' + (record.playing ? '停止播放' : '播放当前音乐')"
-                               placement="topLeft"
-                               arrow-point-at-center>
-                        <template #content>
-                            <a-row type="flex"
-                                   :gutter="10">
-                                <a-col :flex="1"><img :src='record.simpleSong.al.picUrl'
-                                         width="90" /></a-col>
-                                <a-col :flex="auto">
-                                    <a-list size="small">
-                                        <a-list-item>标题：{{ record.simpleSong.name || record.songName }}</a-list-item>
-                                        <a-list-item v-if="record.simpleSong?.ar?.[0]?.name || record.artist">歌手：{{ record.simpleSong?.ar?.[0]?.name || record.artist }}</a-list-item>
-                                        <a-list-item v-if="record.simpleSong.al.name || record.album">专辑：{{ record.simpleSong.al.name || record.album }}</a-list-item>
-                                    </a-list>
-                                </a-col>
-                            </a-row>
 
+                <a-popover :title="'点击' + (record.playing ? '停止播放' : '播放当前音乐')"
+                           placement="topLeft"
+                           arrow-point-at-center>
+                    <template #content>
+                        <a-row type="flex"
+                               :gutter="10">
+                            <a-col :flex="1">
+
+                                <img v-if="record.simpleSong?.al?.picUrl"
+                                     :src='record.simpleSong?.al?.picUrl'
+                                     width="90" />
+                                <a-avatar v-else
+                                          :size="90"
+                                          shape="square"><template #icon>🎶</template></a-avatar>
+                            </a-col>
+                            <a-col :flex="auto">
+                                <a-list size="small">
+                                    <a-list-item>标题：{{ record.simpleSong.name || record.songName }}</a-list-item>
+                                    <a-list-item v-if="record.simpleSong?.ar?.[0]?.name || record.artist">歌手：{{ record.simpleSong?.ar?.[0]?.name || record.artist }}</a-list-item>
+                                    <a-list-item v-if="record.simpleSong?.al?.name || record.album">专辑：{{ record.simpleSong?.al?.name || record.album }}</a-list-item>
+                                </a-list>
+                            </a-col>
+                        </a-row>
+
+                    </template>
+                    <a-progress @click.stop="play(record)"
+                                type="circle"
+                                :size="cloud.progressWidth"
+                                :percent="record.playing && record.percent || 0"
+                                :class="{ playing: record.playing }">
+                        <template #format>
+                            <a-avatar :size="20"
+                                      :src='record.simpleSong?.al?.picUrl'>🎶</a-avatar>
                         </template>
-                        <a-progress @click.stop="play(record)"
-                                    type="circle"
-                                    :size="cloud.progressWidth"
-                                    :percent="record.playing && record.percent || 0"
-                                    :class="{ playing: record.playing }">
-                            <template #format>
-                                <a-avatar :size="20"
-                                          :src='record.simpleSong.al.picUrl'></a-avatar>
-                            </template>
-                        </a-progress>
-                    </a-popover>
-                    <a-tooltip :title="record.simpleSong.name || record.songName">
-                        {{ record.simpleSong.name || record.songName }}
-                    </a-tooltip>
-                </a-space>
+                    </a-progress>
+                </a-popover>
+                <a-tooltip :title="record.simpleSong.name || record.songName">
+                    <span style="padding-left: .5rem;">{{ record.simpleSong.name || record.songName }}</span>
+                </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'artist'">
                 <a-tooltip :title="record.simpleSong?.ar?.[0]?.name || record.artist">
@@ -393,8 +423,8 @@ onMounted(reload)
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'album'">
-                <a-tooltip :title="record.simpleSong.al.name || record.album">
-                    {{ record.simpleSong.al.name || record.album }}
+                <a-tooltip :title="record.simpleSong?.al?.name || record.album">
+                    {{ record.simpleSong?.al?.name || record.album }}
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'fileSize'">
@@ -480,14 +510,14 @@ onMounted(reload)
 
 @media (prefers-color-scheme: dark) {
     @keyframes wave {
-    0% {
-        box-shadow: 0 0 0 0px #000, 0 0 0 0px rgba(255, 0, 0, 0), 0 0 0 2px #000, 0 0 0 3px red;
-    }
+        0% {
+            box-shadow: 0 0 0 0px #000, 0 0 0 0px rgba(255, 0, 0, 0), 0 0 0 2px #000, 0 0 0 3px red;
+        }
 
-    100% {
-        box-shadow: 0 0 0 2px #000, 0 0 0 3px red, 0 0 0 5px #000, 0 0 0 6px rgba(0, 0, 0, 0);
+        100% {
+            box-shadow: 0 0 0 2px #000, 0 0 0 3px red, 0 0 0 5px #000, 0 0 0 6px rgba(0, 0, 0, 0);
+        }
     }
-}
 
 }
 </style>

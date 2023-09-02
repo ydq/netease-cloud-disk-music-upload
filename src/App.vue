@@ -56,7 +56,7 @@ audio.ontimeupdate = e => {
     player.percent = audio.currentTime * 100 / audio.duration
 }
 audio.onerror = e => {
-    message.warn('播放失败，可能是' + (player.src.startsWith('blob:') ? '音频格式暂不支持' : '网易云返回的地址访问失败所致'))
+    message.warn('播放失败，可能是' + (player.src.startsWith('blob:') ? '浏览器不支持当前的音频格式（但可能不影响上传）' : '浏览器不支持的格式或网易云返回的地址访问失败所致'))
     player.stop()
 }
 
@@ -99,7 +99,7 @@ const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
 //系统深色主题自动监听探测 并注入给下游组件使用
 const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
 const isDark = ref(themeMedia.matches)
-themeMedia.addEventListener('change',e => isDark.value = e.matches);
+themeMedia.addEventListener('change', e => isDark.value = e.matches);
 
 
 provide('player', player);
@@ -110,7 +110,7 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
 
 <template>
     <a-config-provider :locale="zhCN"
-                       :theme="{ algorithm: isDark?[theme.compactAlgorithm, theme.darkAlgorithm]:theme.compactAlgorithm }">
+                       :theme="{ token: { fontFamily: 'jbt', fontSize: 16, controlHeight: 36 }, algorithm: isDark ? [theme.compactAlgorithm, theme.darkAlgorithm] : theme.compactAlgorithm }">
         <template v-if="user.name && user.avatar">
             <a-page-header class="userinfo"
                            :title="user.name"
@@ -142,7 +142,8 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
                     </div>
                 </template>
             </a-page-header>
-            <a-tabs size="small">
+            <a-tabs size="small"
+                    animated>
                 <a-tab-pane key="list"
                             tab="网盘音乐列表">
                     <list />
@@ -159,6 +160,11 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
 </template>
 
 <style>
+@font-face {
+    font-family: jbt;
+    src: url('/jbt.woff2');
+}
+
 #app {
     position: relative;
     max-width: 1440px;

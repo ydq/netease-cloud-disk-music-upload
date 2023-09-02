@@ -38,7 +38,9 @@ const dropFile = e => {
  * 将文件追加到上传列表
  */
 const addFiles = files => {
-    [...files].filter(file => file.type.startsWith('audio/'))
+    [...files].filter(file => {
+        return file.type.startsWith('audio/') || file.type == '' && file.name.toLowerCase().endsWith('.ape');
+    })
         .filter(file => !uploader.files.map(i => i.filename).includes(file.name))
         .forEach(async file => {
             let ext = file.name.match(/\.(?<ext>\w+)$/).groups.ext.toUpperCase()
@@ -296,9 +298,10 @@ watch(() => user.id, id => uploader.files = [])
                                :key="uploader.filesKey" />
 
                         <a-typography-text type="secondary">
-                            <a-tooltip title="选择文件" placement="bottomLeft">
+                            <a-tooltip title="选择文件"
+                                       placement="bottomLeft">
                                 <span style="text-decoration: underline;">点此 <b>选择文件</b>（支持多选）</span> 或者 将 <b>文件拖放</b> 至下方区域以添加至上传列表（上传期间请勿切换账号，否则可能导致不可预料的后果）
-                            </a-tooltip> 
+                            </a-tooltip>
                         </a-typography-text>
                     </label>
                 </a-space>
@@ -313,8 +316,7 @@ watch(() => user.id, id => uploader.files = [])
                         <a-progress @click.stop="play(record)"
                                     type="circle"
                                     :percent="record.playing && record.playPercent || 0"
-                                    :size="uploader.progressWidth"
-                                    trailColor="#ddd">
+                                    :size="uploader.progressWidth">
                             <template #format>
                                 <i class="icn"
                                    :class="record.playing ? 'stop' : 'play'"></i>
@@ -389,7 +391,6 @@ watch(() => user.id, id => uploader.files = [])
     </div>
 </template>
 <style>
-
 .icn.play {
     width: 0;
     vertical-align: bottom;
@@ -404,6 +405,7 @@ watch(() => user.id, id => uploader.files = [])
     border-width: 2px;
     border-color: currentColor;
 }
+
 .drop-container {
     position: relative;
     overflow: hidden;

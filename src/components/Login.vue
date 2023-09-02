@@ -1,8 +1,7 @@
 <script setup>
 import { loginKey, checkScan, validCode } from '@/js/api.js'
 import { checkLogin, userList } from '@/js/users.js'
-import QRCode from 'qrcode'
-import { defineAsyncComponent, inject, onMounted, reactive, ref } from 'vue';
+import { computed, defineAsyncComponent, inject, onMounted, reactive, ref, watch } from 'vue';
 import { message } from 'ant-design-vue'
 
 //从App.vue 中注入的 当前的用户
@@ -12,8 +11,7 @@ const user = inject('user')
 const qr = reactive({
     show: false,
     key: '',
-    url: '',
-    msg: '二维码登录',
+    status: 'active',
     code: 800,
     avatar: '',
     nickname: ''
@@ -26,7 +24,6 @@ const users = ref([])
 async function renewQrcode() {
     let resp = await loginKey()
     qr.key = resp.unikey
-    qr.url = await QRCode.toDataURL(`https://music.163.com/login?codekey=${qr.key}`, { margin: 0, errorCorrectionLevel: 'L' })
     await checkQrScan()
 }
 
@@ -39,16 +36,18 @@ async function checkQrScan() {
     }
     //800 二维码已失效｜801 等待扫码 ｜802 扫码成功 等待授权 ｜ 803 扫码授权成功
     qr.code = resp.code
-    qr.msg = resp.message
     qr.avatar = resp.avatarUrl || ''
     qr.nickname = resp.nickname || ''
-    if (resp.code == 803) {
-        qr.msg = '登录成功'
+    if (resp.code == 801) {
+        qr.status = 'active'
+    } else if (resp.code == 802) {
+        qr.status = 'loading'
+    } else if (resp.code == 803) {
+        qr.status = 'loading'
         await checkLogin(user)
         return
-    }
-    if (resp.code == 800) {
-        qr.msg = '重新生成'
+    } else if (resp.code == 800) {
+        qr.status = 'expired'
         return
     }
     setTimeout(checkQrScan, 1500)
@@ -88,13 +87,13 @@ const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
                  :closable="false"
                  :width="380"
                  :mask-closable="false"
-                 :ok-text="qr.msg"
+                 ok-text="二维码登录"
                  :ok-button-props="{ disabled: qr.code != 800 }"
                  @ok="renewQrcode"
                  @cancel="officialWebsiteLogin">
-            <div v-if="qr.url"
+            <div v-if="qr.key"
                  id="qrcode"
-                 :class="{ timeout: qr.url && qr.code == 800 }">
+                 :class="{ timeout: qr.key && qr.code == 800 }">
                 <a-tooltip v-if="qr.avatar"
                            :title="qr.nickname"
                            :open="true"
@@ -102,8 +101,12 @@ const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
                     <a-avatar :src="qr.avatar"
                               :size="100"></a-avatar>
                 </a-tooltip>
-                <img v-else
-                     :src="qr.url" />
+                <a-qrcode v-else
+                          :value="`https://music.163.com/login?codekey=${qr.key}`"
+                          :size="150"
+                          error-level="L"
+                          :status="qr.status"
+                          @refresh="renewQrcode" />
             </div>
             <span v-else>未能获取到登录用户信息<br>请打开 <a-typography-text underline>网易云音乐官网</a-typography-text> 进行登录 或 使用 二维码登录</span>
             <div v-if="users.length">
@@ -113,7 +116,7 @@ const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
                 </p>
                 <div style="overflow: hidden;">
                     <a-space size="middle"
-                             align="center">
+                             :align="'center'">
                         <user-card v-for="u in users"
                                    :user-context="user"
                                    :user="u"
@@ -132,25 +135,12 @@ const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
     position: relative;
 }
 
-#qrcode img {
-    max-width: 150px;
+.ant-qrcode {
+    margin: auto;
 }
 
 .avatar {
     border-radius: 50%;
-}
-
-.timeout::after {
-    content: '二维码已过期';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 6.5rem;
-    background: rgba(0, 0, 0, .3);
-    text-shadow: 0 0 5px #fff;
-    text-align: center;
-    border-radius: .3rem;
 }
 
 .timeout img {
