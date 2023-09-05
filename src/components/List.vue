@@ -18,10 +18,21 @@ const cloud = reactive({
         let filter = cloud.filter.replace(/\s+/ig, '').toLowerCase()
         if (filter) {
             cloud.loading = true
+            //全局忽略大小写分字搜索，支持  输入  “hloy”  命中匹配  “Hello How Are You”
             data = data.filter(record => {
-                return (record.simpleSong.name || record.songName || '').replace(/\s+/ig, '').toLowerCase().includes(filter)
-                    || (record.simpleSong?.ar?.[0]?.name || record.artist || '').replace(/\s+/ig, '').toLowerCase().includes(filter)
-                    || (record.simpleSong?.al?.name || record.album || '').replace(/\s+/ig, '').toLowerCase().includes(filter)
+                //标题、歌手、专辑 分开匹配，不能标题命中第一个搜索字，歌手命中第二个搜索字
+                let searchs = record.search.split('@@')
+                let arrs = filter.split('')
+                out: for (let s of searchs) {
+                    let idx = -1;
+                    for (let c of arrs) {
+                        if ((idx = s.indexOf(c, idx + 1)) == -1) {
+                            continue out;
+                        }
+                    }
+                    return true
+                }
+                return false
             })
             cloud.loading = false
         }
@@ -75,9 +86,9 @@ const loadData = async (offset, autoRetry = true) => {
         return
     }
     if (offset == 0) {
-        cloud.allData = resp.data
+        cloud.allData = resp.data.map(convert)
     } else {
-        cloud.allData = cloud.allData.concat(resp.data)
+        cloud.allData = cloud.allData.concat(resp.data.map(convert))
     }
     if (resp.data.length < 100) {
         cloud.loading = false
@@ -85,7 +96,19 @@ const loadData = async (offset, autoRetry = true) => {
     }
     await loadData(offset + 100)
 }
-
+/**
+ * 将元数据简化，便于其它地方使用
+ * @param {接口返回来的歌曲元数据} item 
+ */
+const convert = item => {
+    let { songId, asid, songName, simpleSong, artist, album, fileSize, addTime } = item
+    songName ||= simpleSong.name || ''
+    artist ||= simpleSong?.ar?.[0]?.name || ''
+    album ||= simpleSong?.al?.name || ''
+    let search = [songName, artist, album].join('@@').replace(/\s+/ig, '').toLowerCase()
+    let pic = simpleSong?.al?.picUrl || ''
+    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime };
+}
 
 /**
  * 重新初始化刷新列表
@@ -132,7 +155,7 @@ const play = async item => {
         let resp = await songInfo({ ids: [item.songId] })
         if (validCode.includes(resp.code)) {
             getLyric(item.songId)
-            player.play(item.songId, resp.data[0].url, item.simpleSong?.al?.picUrl)
+            player.play(item.songId, resp.data[0].url, item.pic)
         } else {
             message.warn("获取链接地址失败，但重试几次或换个时间段再试没准会有奇效～")
         }
@@ -274,7 +297,7 @@ const match = async record => {
         //所以 如果播放器播放的是当前老的ID，则需要进行更新
         if (player.id == oldId) {
             player.id = newId
-            player.cover = record.simpleSong?.al?.picUrl
+            player.cover = record.pic
             getLyric(newId)//自动触发根据新的歌曲ID重新获取歌词
         }
         if (cloud.selectedRowKeys.includes(oldId)) {
@@ -385,8 +408,8 @@ onMounted(reload)
                                :gutter="10">
                             <a-col :flex="1">
 
-                                <img v-if="record.simpleSong?.al?.picUrl"
-                                     :src='record.simpleSong?.al?.picUrl'
+                                <img v-if="record.pic"
+                                     :src='record.pic'
                                      width="90" />
                                 <a-avatar v-else
                                           :size="90"
@@ -394,9 +417,9 @@ onMounted(reload)
                             </a-col>
                             <a-col :flex="auto">
                                 <a-list size="small">
-                                    <a-list-item>标题：{{ record.simpleSong.name || record.songName }}</a-list-item>
-                                    <a-list-item v-if="record.simpleSong?.ar?.[0]?.name || record.artist">歌手：{{ record.simpleSong?.ar?.[0]?.name || record.artist }}</a-list-item>
-                                    <a-list-item v-if="record.simpleSong?.al?.name || record.album">专辑：{{ record.simpleSong?.al?.name || record.album }}</a-list-item>
+                                    <a-list-item>标题：{{ record.songName }}</a-list-item>
+                                    <a-list-item v-if="record.artist">歌手：{{ record.artist }}</a-list-item>
+                                    <a-list-item v-if="record.album">专辑：{{ record.album }}</a-list-item>
                                 </a-list>
                             </a-col>
                         </a-row>
@@ -409,22 +432,22 @@ onMounted(reload)
                                 :class="{ playing: record.playing }">
                         <template #format>
                             <a-avatar :size="20"
-                                      :src='record.simpleSong?.al?.picUrl'>🎶</a-avatar>
+                                      :src='record.pic'>🎶</a-avatar>
                         </template>
                     </a-progress>
                 </a-popover>
-                <a-tooltip :title="record.simpleSong.name || record.songName">
-                    <span style="padding-left: .5rem;">{{ record.simpleSong.name || record.songName }}</span>
+                <a-tooltip :title="record.songName">
+                    <span style="padding-left: .5rem;">{{ record.songName }}</span>
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'artist'">
-                <a-tooltip :title="record.simpleSong?.ar?.[0]?.name || record.artist">
-                    {{ record.simpleSong?.ar?.[0]?.name || record.artist }}
+                <a-tooltip :title="record.artist">
+                    {{ record.artist }}
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'album'">
-                <a-tooltip :title="record.simpleSong?.al?.name || record.album">
-                    {{ record.simpleSong?.al?.name || record.album }}
+                <a-tooltip :title="record.album">
+                    {{ record.album }}
                 </a-tooltip>
             </template>
             <template v-else-if="column.dataIndex == 'fileSize'">

@@ -115,8 +115,14 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
             <a-page-header class="userinfo"
                            :title="user.name"
                            :sub-title="user.profile"
-                           :avatar="{ src: player.cover || user.avatar, size: 'large' }"
-                           :class="{ playing: !!player.id }">
+                           :class="{ playing: !!player.id }"
+                           @back="() => player.stop()">
+                <template #backIcon>
+                    <a-tooltip :title="!!player.id ? '点击停止播放' : ''">
+                        <a-avatar size="large"
+                                  :src='player.cover || user.avatar'>🎶</a-avatar>
+                    </a-tooltip>
+                </template>
                 <template #tags>
                     <a-tag v-if="user.gender == 1"
                            color="blue">♂︎</a-tag>
@@ -162,7 +168,7 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
 <style>
 @font-face {
     font-family: jbt;
-    src: url('/jbt.woff2');
+    src: url('/fonts/jbt.woff2');
 }
 
 #app {
@@ -218,6 +224,10 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
 
 .ant-page-header {
     background: transparent;
+}
+
+.ant-page-header .ant-page-header-back {
+    margin-right: 0;
 }
 
 .playing .ant-page-header-heading-left .ant-avatar img {
