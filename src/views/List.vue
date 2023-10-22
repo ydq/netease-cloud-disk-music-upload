@@ -1,7 +1,15 @@
+<route lang="json">
+{
+    "name":"list",
+    "path":"/list",
+    "alias":["/"]
+}
+</route>
 <script setup>
 import { computed, inject, onMounted, reactive, watch } from 'vue'
 import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '@/js/api.js'
 import { checkLogin } from '@/js/users.js'
+import { filterList } from '@/js/helper.js'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { message, Modal } from 'ant-design-vue'
@@ -14,28 +22,9 @@ const cloud = reactive({
     filter: '',//本地搜索过滤
     data: computed(() => {
         //给到table 的数据
-        let data = cloud.allData
-        let filter = cloud.filter.replace(/\s+/ig, '').toLowerCase()
-        if (filter) {
-            cloud.loading = true
-            //全局忽略大小写分字搜索，支持  输入  “hloy”  命中匹配  “Hello How Are You”
-            data = data.filter(record => {
-                //标题、歌手、专辑 分开匹配，不能标题命中第一个搜索字，歌手命中第二个搜索字
-                let searchs = record.search.split('@@')
-                let arrs = filter.split('')
-                out: for (let s of searchs) {
-                    let idx = -1;
-                    for (let c of arrs) {
-                        if ((idx = s.indexOf(c, idx + 1)) == -1) {
-                            continue out;
-                        }
-                    }
-                    return true
-                }
-                return false
-            })
-            cloud.loading = false
-        }
+        cloud.loading = true
+        let data = filterList(cloud.allData,cloud.filter.replace(/\s+/ig, '').toLowerCase())
+        cloud.loading = false
         pagination.total = data.length
         return data;
     }),
@@ -61,7 +50,7 @@ const pagination = reactive({
     size: 'normal',
     total: 0,
     hideOnSinglePage: true,
-    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 200) / 33)),
+    pageSize: Math.max(5, Math.floor((document.body.offsetHeight - 220) / 33)),
     pageSizeOptions: ['10', '20', '30', '50', '100'],
     // current: 1
 })
@@ -290,7 +279,7 @@ const match = async record => {
     let resp = await songMatch({ userId: user.id, adjustSongId: record.asid, songId: record.songId })
     if (validCode.includes(resp.code)) {
         message.success('歌曲信息已匹配纠正～')
-        Object.assign(record, resp.matchData)
+        Object.assign(record, convert(resp.matchData))
         delete record.asid
         let newId = record.songId
         //因为歌曲信息匹配修改之后，网盘内的歌曲ID变成了你输入的歌曲ID
@@ -370,7 +359,7 @@ onMounted(reload)
                 </a-col>
                 <a-col flex="auto">
                     <div style="position: relative;text-align: right;">
-                        <Transition>
+                        <Transition name="lrc">
                             <div :key="cloud.currLrc || 'noneLrc'">
                                 <a-typography-text type="secondary">{{ cloud.currLrc }}</a-typography-text>
                             </div>
@@ -492,23 +481,23 @@ onMounted(reload)
     cursor: pointer;
 }
 
-.v-enter-active,
-.v-leave-active {
+.lrc-enter-active,
+.lrc-leave-active {
     transition: all .5s ease;
 }
 
-.v-enter-from,
-.v-leave-to {
+.lrc-enter-from,
+.lrc-leave-to {
     position: absolute;
     right: 0;
     opacity: 0;
 }
 
-.v-enter-from {
+.lrc-enter-from {
     transform: translateX(20px);
 }
 
-.v-leave-to {
+.lrc-leave-to {
     transform: translateX(-20px);
 }
 

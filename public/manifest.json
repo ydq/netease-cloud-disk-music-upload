@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "网易云音乐云盘管理",
     "description": "网易云音乐云盘管理，支持本地音乐上传至网易云盘",
-    "version": "1.7",
+    "version": "1.8",
     "author": "darren",
     "icons": {
         "32": "imgs/icon.png",

@@ -17,7 +17,7 @@ const emits = defineEmits(['change', 'delete'])
 
 //点击切换用户的方法（从localStorage中取出指定用户的cookie，写入至浏览器）
 async function changeUser() {
-    let oldId = props.userContext.id
+    let oldId = props.userContext?.id
     let state = await resumeUser(props.userContext, props.user.id)
     emits('change', { oldId, state, usr: props.user })
 }

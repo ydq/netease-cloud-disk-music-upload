@@ -54,7 +54,7 @@ onMounted(() => {
 #spectrumCanvas {
     position: absolute;
     width: 960px;
-    height: 83px;
+    height: 100px;
     top: 0;
     right: 0;
     transform: rotateY(180deg);

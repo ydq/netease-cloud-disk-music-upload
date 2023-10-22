@@ -1,7 +1,7 @@
 <script setup>
 import { loginKey, checkScan, validCode } from '@/js/api.js'
 import { checkLogin, userList } from '@/js/users.js'
-import { computed, defineAsyncComponent, inject, onMounted, reactive, ref, watch } from 'vue';
+import { defineAsyncComponent, inject, onMounted, reactive, ref, watch } from 'vue';
 import { message } from 'ant-design-vue'
 
 //从App.vue 中注入的 当前的用户

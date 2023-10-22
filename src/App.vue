@@ -1,8 +1,13 @@
 <script setup>
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import { defineAsyncComponent, onMounted, provide, reactive, ref, watch } from 'vue';
-import { checkLogin, switchUser, resumeUser, userList } from '@/js/users.js'
 import { message, theme } from 'ant-design-vue'
+import { checkLogin } from '@/js/users.js'
+import { useRoute, useRouter } from 'vue-router';
+import AppHead from './components/AppHead.vue';
+
+const route = useRoute()
+const router = useRouter()
 
 //当前用户的信息 组入给子组件，便于根据当前登录的用户获取一些接口信息
 const user = reactive({
@@ -13,8 +18,10 @@ const user = reactive({
     gender: 0
 })
 
-//支持多用户
-const users = ref([])
+
+onMounted(async () => {
+    await checkLogin(user)
+})
 
 //底层音频播放器
 const audio = new Audio()
@@ -61,40 +68,28 @@ audio.onerror = e => {
 }
 
 
-//刷新多用户的用户列表（用户列表不显示当前用户）
-function reloadUserList() {
-    users.value = userList(user.id)
-}
-
-//初始化时检查用户登录情况，如果已经登录了，则刷新一下用户列表
-onMounted(async () => {
-    let check = await checkLogin(user)
-    if (check) {
-        reloadUserList()
-    }
-})
-
-//切换用户（从 localStorage 中 恢复 cookie 并写入到浏览器 以达到不用频繁扫码切换用户的目的）
-async function changeUser({ oldId, state }) {
-    //保存当前的用户ID，防止切换的用户 cookie 失效 再切回来
-    if (!state) {
-        await resumeUser(user, oldId)
-    }
-}
-
-//当切换用户时刷新一下用户列表（用户列表不显示当前用户）
-watch(() => user.id, reloadUserList)
 
 //一些子组件
 const login = defineAsyncComponent(() => import('./components/Login.vue'))
-const list = defineAsyncComponent(() => import('./components/List.vue'))
-const uploader = defineAsyncComponent(() => import('./components/Uploader.vue'))
 const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
-const userCard = defineAsyncComponent(() => import('./components/UserCard.vue'))
 
 
+const current = ref(['list'])
 
+const init = watch(route,route => {
+    current.value = [route.name]
+    init()
+})
 
+watch(current,page => {
+    if(page[0] != 'lite'){
+        router.replace({name:page[0]})
+    } else {
+        let width=400,height=680;
+        window.open('lite.html','ncu_lite',`popup=1,location=0,menubar=0,resizable=0,scrollbars=0,status=0,titlebar=0,toolbar=0,width=${width},height=${height},left=${(window.screen.width - width)/2},top=${(window.screen.height - height)/2}`)
+        window.close()
+    }
+})
 
 //系统深色主题自动监听探测 并注入给下游组件使用
 const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
@@ -112,53 +107,21 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
     <a-config-provider :locale="zhCN"
                        :theme="{ token: { fontFamily: 'jbt', fontSize: 16, controlHeight: 36 }, algorithm: isDark ? [theme.compactAlgorithm, theme.darkAlgorithm] : theme.compactAlgorithm }">
         <template v-if="user.name && user.avatar">
-            <a-page-header class="userinfo"
-                           :title="user.name"
-                           :sub-title="user.profile"
-                           :class="{ playing: !!player.id }"
-                           @back="() => player.stop()">
-                <template #backIcon>
-                    <a-tooltip :title="!!player.id ? '点击停止播放' : ''">
-                        <a-avatar size="large"
-                                  :src='player.cover || user.avatar'>🎶</a-avatar>
-                    </a-tooltip>
-                </template>
-                <template #tags>
-                    <a-tag v-if="user.gender == 1"
-                           color="blue">♂︎</a-tag>
-                    <a-tag v-else
-                           color="pink">♀︎</a-tag>
-                </template>
-                <template #extra>
-                    <div id="multi-user">
-                        <a-tooltip title="登录新账号"
-                                   placement="bottom">
-                            <a-avatar @click="switchUser(user)">╋</a-avatar>
-                        </a-tooltip>
-
-                        <template v-if="users.length">
-
-                            <user-card v-for="u in users"
-                                       :user-context="user"
-                                       :user="u"
-                                       @change="changeUser"
-                                       @delete="reloadUserList" />
-                        </template>
-
-                    </div>
-                </template>
-            </a-page-header>
-            <a-tabs size="small"
-                    animated>
-                <a-tab-pane key="list"
-                            tab="网盘音乐列表">
-                    <list />
-                </a-tab-pane>
-                <a-tab-pane key="uploader"
-                            tab="本地音乐上传">
-                    <uploader />
-                </a-tab-pane>
-            </a-tabs>
+            <app-head/>
+            <a-menu v-model:selectedKeys="current" mode="horizontal">
+                <a-menu-item key="list">网盘音乐列表</a-menu-item>
+                <a-menu-item key="uploader">本地音乐上传</a-menu-item>
+                <a-menu-item key="lite">
+                    <a-tooltip title="适配移动设备" placement="right">Lite版</a-tooltip>
+                </a-menu-item>
+            </a-menu>
+            <router-view v-slot="{ Component }">
+                <transition name="page">
+                    <KeepAlive>
+                        <component :is="Component" />
+                    </KeepAlive>
+                </transition>
+            </router-view>
             <spectrum :audio="audio" />
         </template>
         <login v-else />
@@ -180,13 +143,27 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
     margin: auto;
 }
 
-.ant-page-header,
-.ant-tabs {
-    padding: 0;
+.page-enter-active,
+.page-leave-active {
+    transition: all .3s ease;
+    position: absolute !important;
 }
 
+.page-enter-from,
+.page-leave-to {
+    transform: translateY(20px);
+    opacity: 0;
+}
+
+.ant-page-header {
+    padding: 0;
+}
+.ant-menu-light {
+    background: transparent;
+}
 .ant-page-header-heading-left,
-.ant-tabs-tab {
+.ant-menu-item
+{
     backdrop-filter: blur(3px);
 }
 

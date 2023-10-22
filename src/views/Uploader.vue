@@ -1,9 +1,16 @@
+<route lang="json">
+{
+    "name": "uploader",
+    "path": "/uploader"
+}
+</route>
 <script setup>
 import { ArrayBuffer as MD5 } from 'spark-md5'
 import { parseBuffer as metaData } from 'music-metadata'
 import { Buffer } from 'buffer'
 import { inject, reactive, watch } from 'vue'
 import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '@/js/api.js'
+import { calcFileMd5 } from '@/js/helper.js'
 import { message } from 'ant-design-vue'
 
 window.Buffer = Buffer;
@@ -39,7 +46,10 @@ const dropFile = e => {
  */
 const addFiles = files => {
     [...files].filter(file => {
-        return file.type.startsWith('audio/') || file.type == '' && file.name.toLowerCase().endsWith('.ape');
+        return file.type.toLowerCase().startsWith('audio/')
+            || file.type.toLowerCase().endsWith('/x-ms-wma') // video/x-ms-wma
+            || file.type.toLowerCase().endsWith('/mp4')
+            || file.name.toLowerCase().endsWith('.ape');
     })
         .filter(file => !uploader.files.map(i => i.filename).includes(file.name))
         .forEach(async file => {
@@ -67,14 +77,6 @@ const addFiles = files => {
 }
 
 
-const file2ArrayBuffer = file => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = e => resolve(e.target.result)
-        reader.onerror = reject
-        reader.readAsArrayBuffer(file)
-    })
-}
 
 /**
  * 批量上传全部未上传的文件
@@ -100,12 +102,12 @@ const uploadAll = async () => {
 /**
  * 上传列表中的指定文件
  */
-const upload = async (i, autoRetry = true) => {
+const upload = async (i, autoRetry = true, md5) => {
     const data = uploader.files[i]
     //初始化一个进度条，防止频繁点击
     data.percent = 0
 
-    const md5 = MD5.hash(await file2ArrayBuffer(data.file))
+    md5 ??= await calcFileMd5(data.file)
     const ext = data.ext
     const filename = data.filename
         .replace('.' + ext, '')
@@ -114,30 +116,15 @@ const upload = async (i, autoRetry = true) => {
 
     let checkResp = await uploadCheck({ md5, length: data.file.size })
 
-    let failSuffix = '失败了，但手动重试几次或换个时间段再试没准会有奇效～'
-    let retryMsg = '上传发生了一点问题，正在自动重试...'
-
     if (!validCode.includes(checkResp.code)) {
-        data.percent = null
-        if (autoRetry) {
-            message.info(retryMsg)
-            await upload(i, false)
-        } else {
-            message.warn(`上传前置检查${failSuffix}`)
-        }
+        await fail(i,'上传前置检查',autoRetry,md5)
         return
     }
 
     let tokenResp = await uploadToken({ ext, md5, filename })
 
     if (!validCode.includes(tokenResp.code)) {
-        data.percent = null
-        if (autoRetry) {
-            message.info(retryMsg)
-            await upload(i, false)
-        } else {
-            message.warn(`获取上传Token${failSuffix}`)
-        }
+        await fail(i,'获取上传Token',autoRetry,md5)
         return
     }
 
@@ -152,13 +139,7 @@ const upload = async (i, autoRetry = true) => {
                 data.percent = e.progress == 1 ? 99 : Math.floor(e.progress * 100)
             })
         } catch (e) {
-            data.percent = null
-            if (autoRetry) {
-                message.info(retryMsg)
-                await upload(i, false)
-            } else {
-                message.warn(`文件上传${failSuffix}`)
-            }
+            await fail(i,'文件上传',autoRetry,md5)
             return
         }
     }
@@ -173,13 +154,7 @@ const upload = async (i, autoRetry = true) => {
     })
 
     if (!validCode.includes(infoResp.code)) {
-        data.percent = null
-        if (autoRetry) {
-            message.info(retryMsg)
-            await upload(i, false)
-        } else {
-            message.warn(`更新文件信息${failSuffix}`)
-        }
+        await fail(i,'更新文件信息',autoRetry,md5)
         return
     }
 
@@ -189,29 +164,33 @@ const upload = async (i, autoRetry = true) => {
         message.success(`${data.filename}上传成功`)
         data.percent = 100
     } else {
-        data.percent = null
-        if (autoRetry) {
-            message.info(retryMsg)
-            await upload(i, false)
-        } else {
-            message.warn(`保存到网盘${failSuffix}`)
-        }
+        await fail(i,'保存到网盘',autoRetry,md5)
     }
 }
 
+
+const fail = async (idx,ops,retry,md5) => {
+    uploader.files[idx].percent = null
+    if (retry) {
+        message.info('上传发生了一点问题，正在自动重试...')
+        await upload(i, false, md5)
+    } else {
+        message.warn(`${ops}失败了，但手动重试几次或换个时间段再试没准会有奇效～`)
+    }
+}
 
 /**
  * 编辑指定文件的信息
  */
 const edit = filename => {
-    editableData[filename] = Object.assign({}, uploader.files.filter(item => filename == item.filename)[0])
+    editableData[filename] = Object.assign({}, uploader.files.find(item => filename == item.filename))
 }
 
 /**
  * 保存编辑指定文件的信息
  */
 const save = filename => {
-    Object.assign(uploader.files.filter(item => filename == item.filename)[0], editableData[filename])
+    Object.assign(uploader.files.find(item => filename == item.filename), editableData[filename])
     delete editableData[filename]
 }
 
@@ -292,7 +271,7 @@ watch(() => user.id, id => uploader.files = [])
                     <label for="fileInput">
                         <input id="fileInput"
                                type="file"
-                               accept=".mp3,.flac,.ape,.wma,.wav,.ogg,.aac"
+                               accept=".mp3,.flac,.ape,.wma,.wav,.ogg,.aac,.m4a,.mp4"
                                multiple
                                @change="changeFile"
                                :key="uploader.filesKey" />
