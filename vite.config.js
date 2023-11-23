@@ -7,15 +7,12 @@ import VueRouter from 'unplugin-vue-router/vite'
 const commonCfg = defineConfig({
     resolve: {
         alias: {
-            '@': '/src',
             'node:buffer': 'buffer',
             'node:stream': 'stream',
         }
     },
     plugins: [
-        VueRouter({
-            routesFolder:'src/views'
-        }),
+        VueRouter(),
         vue(),
         Components({
             resolvers: [

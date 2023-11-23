@@ -1,4 +1,4 @@
-import { userAccount } from '@/js/api.js'
+import { userAccount } from '/src/js/api.js'
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 dayjs.locale('zh-cn');

@@ -14,10 +14,9 @@ const spectrum = reactive({
     meterWidth: 6,
     gap: 2,
     capHeight: 4,
-    capColor: '#CEE2F3',
+    capColor: '#7209d4',
+    barColors:[[0,'#00a5b2'],[.3,'#2832d4'],[1,'#7209d4']],
     capYPosition: [],
-    fromColor: '#E0EEDA',
-    toColor: '#CEE2F3'
 })
 /**
  * 初始化频谱
@@ -36,8 +35,9 @@ const spectrumInit = (audio, canvas) => {
     audioCtx.createMediaElementSource(audio).connect(spectrum.analyser)
     spectrum.analyser.connect(audioCtx.destination)
     spectrum.gradient = spectrum.ctx.createLinearGradient(0, 0, 0, spectrum.canvasHeight)
-    spectrum.gradient.addColorStop(0, spectrum.fromColor)
-    spectrum.gradient.addColorStop(1, spectrum.toColor)
+    spectrum.barColors.forEach(c => {
+        spectrum.gradient.addColorStop(c[0], c[1])
+    })
     spectrum.isPlaying && spectrumRenderFrame();
 }
 /**

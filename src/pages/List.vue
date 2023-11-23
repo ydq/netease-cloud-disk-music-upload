@@ -1,15 +1,17 @@
 <route lang="json">
 {
-    "name":"list",
-    "path":"/list",
-    "alias":["/"]
+    "name": "list",
+    "path": "/list",
+    "alias": [
+        "/"
+    ]
 }
 </route>
 <script setup>
 import { computed, inject, onMounted, reactive, watch } from 'vue'
-import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '@/js/api.js'
-import { checkLogin } from '@/js/users.js'
-import { filterList } from '@/js/helper.js'
+import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '/src/js/api.js'
+import { checkLogin } from '/src/js/users.js'
+import { filterList } from '/src/js/helper.js'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { message, Modal } from 'ant-design-vue'
@@ -23,7 +25,7 @@ const cloud = reactive({
     data: computed(() => {
         //给到table 的数据
         cloud.loading = true
-        let data = filterList(cloud.allData,cloud.filter.replace(/\s+/ig, '').toLowerCase())
+        let data = filterList(cloud.allData, cloud.filter.replace(/\s+/ig, '').toLowerCase())
         cloud.loading = false
         pagination.total = data.length
         return data;
@@ -106,6 +108,7 @@ const reload = async () => {
     pagination.current = 1
     cloud.selectedRowKeys = []
     await loadData(0)
+    playStatus(player.id)
 }
 
 /**
@@ -261,7 +264,13 @@ const match = async record => {
         return
     }
     record.asid = record.asid.trim()
-    let urlmatch = record.asid.match(/music\.163\.com\/(?<type>\w+).*[?&]id=(?<asid>\d+)/)
+    // https://music.163.com/#/song?id=12345
+    // https://music.163.com/song?id=12345&userid=12345
+    let urlmatch = record.asid.match(/music\.163\.com\/(?:#\/)?(?<type>\w+).*[?&]id=(?<asid>\d+)/)
+    if (!urlmatch) {
+        // https://y.music.163.com/m/song/12345
+        urlmatch = record.asid.match(/music\.163\.com\/m\/(?<type>\w+)\/(?<asid>\d+)/)
+    }
     if (urlmatch) {
         if (urlmatch.groups.type == 'song') {
             record.asid = urlmatch.groups.asid

@@ -1,6 +1,6 @@
 <script setup>
 import { inject, onMounted, ref, watch } from 'vue';
-import { spectrum, spectrumInit, spectrumRenderFrame } from '@/js/spectrum.js'
+import { spectrum, spectrumInit, spectrumRenderFrame } from '/src/js/spectrum.js'
 
 //顶部播放音乐的频谱组件
 const props = defineProps(['audio'])
@@ -23,17 +23,16 @@ props.audio.addEventListener("pause", e => {
 const changeSpectrumColor = () => {
     Object.assign(spectrum, isDark.value ? {
         capColor: '#444',
-        fromColor: '#666',
-        toColor: '#333'
+        barColors: [[0,'#666'],[1,'#333']],
     } : {
-        capColor: '#CEE2F3',
-        fromColor: '#E0EEDA',
-        toColor: '#CEE2F3'
+        capColor: '#D3E2FD',
+        barColors:[[0,'#d9d3fd'],[.65,'#D3E2FD']],
     })
     if (spectrum.ctx) {
         let gradient = spectrum.ctx.createLinearGradient(0, 0, 0, spectrum.canvasHeight)
-        gradient.addColorStop(0, spectrum.fromColor)
-        gradient.addColorStop(1, spectrum.toColor)
+        spectrum.barColors.forEach(c => {
+            gradient.addColorStop(c[0], c[1])
+        })
         spectrum.gradient = gradient
     }
 }

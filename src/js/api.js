@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { file2ArrayBuffer } from './helper';
 
 const instance = axios.create({
     timeout: 60000,
@@ -74,7 +75,7 @@ const uploadFile = async (data = {
     md5: '',
     objectKey: '',
     token: '',
-}, onUploadProgress = e => { }) => {
+}, isRetry, onUploadProgress = e => { }) => {
     let objectKey = data.objectKey.replace('/', '%2F')
     let headers = {
         'x-nos-token': data.token,
@@ -84,7 +85,12 @@ const uploadFile = async (data = {
     let totalSize = data.file.size
     if (totalSize < singleFileMaxSize) {
         //小于100M直接上传
-        await upload(headers, data.file, objectKey, 0, true, null, onUploadProgress)
+        if (isRetry) {
+            const fileBuffer = await file2ArrayBuffer(data.file)
+            await upload(headers, fileBuffer.transfer(fileBuffer.maxByteLength + 1), objectKey, 0, true, null, onUploadProgress)
+        } else {
+            await upload(headers, data.file, objectKey, 0, true, null, onUploadProgress)
+        }
     } else {
         //大于100M的文件进行分片
         let chunks = Math.ceil(totalSize / chunkSize);
@@ -96,6 +102,9 @@ const uploadFile = async (data = {
             let end = isLast ? totalSize : (start + chunkSize)
             //文件分片
             let partData = await splitFile(data.file, i * chunkSize, end)
+            if (isRetry && isLast) {
+                partData = partData.transfer(partData.maxByteLength + 1);
+            }
             //文件分片，进度条事件需要重写
             let proxyProgress = e => {
                 let loaded = start + e.loaded

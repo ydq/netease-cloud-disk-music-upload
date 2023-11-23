@@ -10,11 +10,15 @@ const file2ArrayBuffer = file => {
     })
 }
 
-const calcFileMd5 = async file => {
-    return MD5.hash(await file2ArrayBuffer(file))
+const calcFileMd5 = async (file, isRetry) => {
+    let data = await file2ArrayBuffer(file)
+    if (isRetry) {
+        data = data.transfer(data.maxByteLength + 1)
+    }
+    return MD5.hash(data)
 }
 
-const filterList = (data,filter)=>{
+const filterList = (data, filter) => {
     if (filter) {
         //全局忽略大小写分字搜索，支持  输入  “hloy”  命中匹配  “Hello How Are You”
         data = data.filter(record => {
@@ -36,4 +40,4 @@ const filterList = (data,filter)=>{
     return data;
 }
 
-export {file2ArrayBuffer , calcFileMd5 , filterList}
+export { file2ArrayBuffer, calcFileMd5, filterList }

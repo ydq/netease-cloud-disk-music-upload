@@ -1,5 +1,5 @@
 <script setup>
-import { resumeUser, delUser } from '@/js/users.js'
+import { resumeUser, delUser } from '/src/js/users.js'
 //多用户登录快速切换的单个用户小卡组件
 const props = defineProps({
     userContext: Object,

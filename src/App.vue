@@ -2,7 +2,7 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import { defineAsyncComponent, onMounted, provide, reactive, ref, watch } from 'vue';
 import { message, theme } from 'ant-design-vue'
-import { checkLogin } from '@/js/users.js'
+import { checkLogin } from './js/users.js'
 import { useRoute, useRouter } from 'vue-router';
 import AppHead from './components/AppHead.vue';
 
@@ -76,17 +76,17 @@ const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
 
 const current = ref(['list'])
 
-const init = watch(route,route => {
+const init = watch(route, route => {
     current.value = [route.name]
     init()
 })
 
-watch(current,page => {
-    if(page[0] != 'lite'){
-        router.replace({name:page[0]})
+watch(current, page => {
+    if (page[0] != 'lite') {
+        router.replace({ name: page[0] })
     } else {
-        let width=400,height=680;
-        window.open('lite.html','ncu_lite',`popup=1,location=0,menubar=0,resizable=0,scrollbars=0,status=0,titlebar=0,toolbar=0,width=${width},height=${height},left=${(window.screen.width - width)/2},top=${(window.screen.height - height)/2}`)
+        let width = 400, height = 680;
+        window.open('lite.html', 'ncu_lite', `popup=1,location=0,menubar=0,resizable=0,scrollbars=0,status=0,titlebar=0,toolbar=0,width=${width},height=${height},left=${(window.screen.width - width) / 2},top=${(window.screen.height - height) / 2}`)
         window.close()
     }
 })
@@ -107,12 +107,14 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
     <a-config-provider :locale="zhCN"
                        :theme="{ token: { fontFamily: 'jbt', fontSize: 16, controlHeight: 36 }, algorithm: isDark ? [theme.compactAlgorithm, theme.darkAlgorithm] : theme.compactAlgorithm }">
         <template v-if="user.name && user.avatar">
-            <app-head/>
-            <a-menu v-model:selectedKeys="current" mode="horizontal">
+            <app-head />
+            <a-menu v-model:selectedKeys="current"
+                    mode="horizontal">
                 <a-menu-item key="list">网盘音乐列表</a-menu-item>
                 <a-menu-item key="uploader">本地音乐上传</a-menu-item>
                 <a-menu-item key="lite">
-                    <a-tooltip title="适配移动设备" placement="right">Lite版</a-tooltip>
+                    <a-tooltip title="适配移动设备"
+                               placement="right">Lite版</a-tooltip>
                 </a-menu-item>
             </a-menu>
             <router-view v-slot="{ Component }">
@@ -158,12 +160,13 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
 .ant-page-header {
     padding: 0;
 }
+
 .ant-menu-light {
     background: transparent;
 }
+
 .ant-page-header-heading-left,
-.ant-menu-item
-{
+.ant-menu-item {
     backdrop-filter: blur(3px);
 }
 
@@ -239,5 +242,4 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
     .ant-table-row:nth-child(even) {
         background-color: rgb(29, 29, 29);
     }
-}
-</style>
+}</style>

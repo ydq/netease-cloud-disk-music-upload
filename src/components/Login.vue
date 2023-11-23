@@ -1,7 +1,7 @@
 <script setup>
-import { loginKey, checkScan, validCode } from '@/js/api.js'
-import { checkLogin, userList } from '@/js/users.js'
-import { defineAsyncComponent, inject, onMounted, reactive, ref, watch } from 'vue';
+import { loginKey, checkScan, validCode } from '/src/js/api.js'
+import { checkLogin, userList } from '/src/js/users.js'
+import { defineAsyncComponent, inject, onMounted, reactive, ref } from 'vue';
 import { message } from 'ant-design-vue'
 
 //从App.vue 中注入的 当前的用户
@@ -76,7 +76,7 @@ const removeHistory = async () => {
 }
 
 //多用户登录时的 用户卡片组件
-const userCard = defineAsyncComponent(() => import('@/components/UserCard.vue'))
+const userCard = defineAsyncComponent(() => import('/src/components/UserCard.vue'))
 
 </script>
 <template>

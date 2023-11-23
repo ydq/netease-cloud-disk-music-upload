@@ -4,4 +4,6 @@ import router from './router'
 import 'ant-design-vue/dist/reset.css';
 
 
-createApp(App).use(router).mount('#app')
+createApp(App)
+    .use(router)
+    .mount('#app')

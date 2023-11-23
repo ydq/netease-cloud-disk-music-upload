@@ -1,14 +1,16 @@
 <script setup>
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import { message } from 'ant-design-vue'
-import { checkLogin } from '@/js/users.js'
-import { calcFileMd5 } from '@/js/helper.js'
+import { checkLogin } from '/src/js/users.js'
+import { calcFileMd5 } from '/src/js/helper.js'
 import { parseBuffer as metaData } from 'music-metadata'
 import { Buffer } from 'buffer'
-import { cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '@/js/api.js'
+import { cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '/src/js/api.js'
 import { onMounted, provide, reactive, ref } from 'vue';
 import Login from './components/Login.vue';
 import LiteList from './components/LiteList.vue';
+
+import { Modal } from 'ant-design-vue';
 
 
 window.Buffer = Buffer;
@@ -29,16 +31,16 @@ onMounted(async () => {
     await checkLogin(user)
 })
 
-const loadData = async (offset, autoRetry = true) => {
+const loadData = async (offset, isRetry = false) => {
     cloud.loading = true
     cloud.selectedRowKeys = []
     let resp = await cloudGet({ limit: 100, offset })
     if (!validCode.includes(resp.code)) {
-        if (autoRetry) {
-            await checkLogin(user)
-            loadData(offset, false)
-        } else {
+        if (isRetry) {
             message.warn('获取网盘数据失败，请稍后重试或者要不试试重新登录～')
+        } else {
+            await checkLogin(user)
+            loadData(offset, true)
         }
         return
     }
@@ -59,7 +61,8 @@ const uploader = reactive({
     file: null,
     editor: false,
     progress: null,
-    data: {}
+    data: {},
+    autoRetry: false
 })
 
 const changeFile = async e => {
@@ -96,13 +99,14 @@ const changeFile = async e => {
 
 
 
-const upload = async (autoRetry = true, md5) => {
+const upload = async (isRetry = false) => {
+    debugger
     uploader.show = false
     const data = uploader.data
     //初始化一个进度条，防止频繁点击
     uploader.progress = 0
 
-    md5 ??= await calcFileMd5(data.file) //接口重试时 如果传入了MD5 则不重复计算
+    const md5 = await calcFileMd5(data.file, isRetry) //接口重试时 如果传入了MD5 则不重复计算
 
     const ext = data.ext
     const filename = data.filename
@@ -113,14 +117,14 @@ const upload = async (autoRetry = true, md5) => {
     let checkResp = await uploadCheck({ md5, length: data.file.size })
 
     if (!validCode.includes(checkResp.code)) {
-        await fail('上传前置检查', autoRetry, md5)
+        await fail('上传前置检查', isRetry)
         return
     }
 
     let tokenResp = await uploadToken({ ext, md5, filename })
 
     if (!validCode.includes(tokenResp.code)) {
-        await fail('获取上传Token', autoRetry, md5)
+        await fail('获取上传Token', isRetry)
         return
     }
 
@@ -131,11 +135,11 @@ const upload = async (autoRetry = true, md5) => {
                 md5,
                 objectKey: tokenResp.result.objectKey,
                 token: tokenResp.result.token
-            }, e => {
+            }, isRetry, e => {
                 uploader.progress = e.progress == 1 ? 99 : Math.floor(e.progress * 100)
             })
         } catch (e) {
-            await fail('文件上传', autoRetry, md5)
+            await fail('文件上传', isRetry)
             return
         }
     }
@@ -150,7 +154,7 @@ const upload = async (autoRetry = true, md5) => {
     })
 
     if (!validCode.includes(infoResp.code)) {
-        await fail('更新文件信息', autoRetry, md5)
+        await fail('更新文件信息', isRetry)
         return
     }
 
@@ -161,18 +165,40 @@ const upload = async (autoRetry = true, md5) => {
         uploader.progress = null
         await listComponent.value.reload()
     } else {
-        await fail('保存到网盘', autoRetry, md5)
+        await fail('保存到网盘', isRetry)
     }
 }
 
-const fail = async (ops, retry, md5) => {
+const fail = async (ops, isRetry) => {
     uploader.progress = null
-    if (retry) {
-        message.info('上传发生了一点问题，正在自动重试...')
-        await upload(false, md5)
+
+    if (uploader.autoRetry) {
+        if (isRetry) {
+            message.warn(`${ops}失败了，但手动重试几次或换个时间段再试没准会有奇效～`)
+        } else {
+            message.info('上传发生了一点问题，正在自动重试...')
+            await upload(true)
+        }
     } else {
-        message.warn(`${ops}失败了，但手动重试几次或换个时间段再试没准会有奇效～`)
+        message.warn(`${ops}失败了，试试自动上传没准会有奇效～`)
     }
+}
+
+const switchAutoRetry = state => {
+    if (!state) {
+        message.info('已关闭自动重试')
+        return
+    }
+    Modal.confirm({
+        title: '开启上传失败后自动重试',
+        content: '自动重试将在直接上传失败后会尝试强制修改您的文件数据，改变文件的校验信息，以触发网易云的强制上传，此方式在测试过程中会提升上传成功率。请放心，此操作不会修改您本地磁盘上的文件信息，但有可能会导致上传到网易云的音乐无法播放，请您上传完成后自行测试，若上传后的文件无法试听则请关闭此功能。',
+        onOk() {
+            uploader.autoRetry = true
+        },
+        onCancel() {
+            uploader.autoRetry = false
+        }
+    })
 }
 
 </script>
@@ -183,6 +209,10 @@ const fail = async (ops, retry, md5) => {
             <a-page-header title="云盘Lite"
                            :sub-title="user.name">
                 <template #extra>
+                    <a-switch v-model:checked="uploader.autoRetry"
+                              @click="switchAutoRetry"
+                              checked-children="开启"
+                              un-checked-children="重试" />
                     <label for="fileInput"
                            v-if="uploader.progress == null">
                         <input id="fileInput"
@@ -198,13 +228,13 @@ const fail = async (ops, retry, md5) => {
                                        :content="`${uploader.progress}%`" />
                 </template>
             </a-page-header>
-            <lite-list ref="listComponent"/>
+            <lite-list ref="listComponent" />
         </div>
         <login v-else />
         <a-modal title="编辑信息"
                  :visible="uploader.show"
                  @cancel="e => uploader.show = false"
-                 @ok="upload"
+                 @ok="e => upload()"
                  ok-text="确定上传">
             <a-form :label-col="{ span: 3 }"
                     :wrapper-col="{ span: 21 }">

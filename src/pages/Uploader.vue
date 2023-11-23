@@ -5,12 +5,11 @@
 }
 </route>
 <script setup>
-import { ArrayBuffer as MD5 } from 'spark-md5'
 import { parseBuffer as metaData } from 'music-metadata'
 import { Buffer } from 'buffer'
 import { inject, reactive, watch } from 'vue'
-import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '@/js/api.js'
-import { calcFileMd5 } from '@/js/helper.js'
+import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '/src/js/api.js'
+import { calcFileMd5 } from '/src/js/helper.js'
 import { message } from 'ant-design-vue'
 
 window.Buffer = Buffer;
@@ -20,6 +19,7 @@ const uploader = reactive({
     filesKey: Date.now(),
     drag: false,
     progressWidth: 24,
+    autoRetry: false
 })
 
 const editableData = reactive({})
@@ -86,14 +86,10 @@ const uploadAll = async () => {
     for (let i in uploader.files) {
         if (uploader.files[i].percent == null) {
             cnt++;
-            //批量上传不自动重试
-            await upload(i, false)
+            await upload(i)
         }
     }
-    if (cnt > 0) {
-        let fail = uploader.files.filter(d => d.percent == null).length
-        message.info(`自动上传${cnt}个项目，失败${fail}个`)
-    } else {
+    if (cnt == 0) {
         message.info('列表中似乎没有需要上传的项目')
     }
 
@@ -102,12 +98,12 @@ const uploadAll = async () => {
 /**
  * 上传列表中的指定文件
  */
-const upload = async (i, autoRetry = true, md5) => {
+const upload = async (i, isRetry = false) => {
     const data = uploader.files[i]
     //初始化一个进度条，防止频繁点击
     data.percent = 0
 
-    md5 ??= await calcFileMd5(data.file)
+    const md5 = await calcFileMd5(data.file, isRetry)
     const ext = data.ext
     const filename = data.filename
         .replace('.' + ext, '')
@@ -117,14 +113,14 @@ const upload = async (i, autoRetry = true, md5) => {
     let checkResp = await uploadCheck({ md5, length: data.file.size })
 
     if (!validCode.includes(checkResp.code)) {
-        await fail(i,'上传前置检查',autoRetry,md5)
+        await fail(i, '上传前置检查', isRetry)
         return
     }
 
     let tokenResp = await uploadToken({ ext, md5, filename })
 
     if (!validCode.includes(tokenResp.code)) {
-        await fail(i,'获取上传Token',autoRetry,md5)
+        await fail(i, '获取上传Token', isRetry)
         return
     }
 
@@ -135,11 +131,12 @@ const upload = async (i, autoRetry = true, md5) => {
                 md5,
                 objectKey: tokenResp.result.objectKey,
                 token: tokenResp.result.token
-            }, e => {
+            }, isRetry, e => {
                 data.percent = e.progress == 1 ? 99 : Math.floor(e.progress * 100)
             })
         } catch (e) {
-            await fail(i,'文件上传',autoRetry,md5)
+            console.error('error', e)
+            await fail(i, '文件上传', isRetry)
             return
         }
     }
@@ -154,7 +151,7 @@ const upload = async (i, autoRetry = true, md5) => {
     })
 
     if (!validCode.includes(infoResp.code)) {
-        await fail(i,'更新文件信息',autoRetry,md5)
+        await fail(i, '更新文件信息', isRetry)
         return
     }
 
@@ -164,18 +161,22 @@ const upload = async (i, autoRetry = true, md5) => {
         message.success(`${data.filename}上传成功`)
         data.percent = 100
     } else {
-        await fail(i,'保存到网盘',autoRetry,md5)
+        await fail(i, '保存到网盘', isRetry)
     }
 }
 
 
-const fail = async (idx,ops,retry,md5) => {
-    uploader.files[idx].percent = null
-    if (retry) {
-        message.info('上传发生了一点问题，正在自动重试...')
-        await upload(i, false, md5)
+const fail = async (i, ops, isRetry) => {
+    uploader.files[i].percent = null
+    if (uploader.autoRetry) {
+        if (isRetry) {
+            message.warn(`${ops}失败了，但手动重试几次或换个时间段再试没准会有奇效～`)
+        } else {
+            message.info('上传发生了一点问题，正在自动重试...')
+            await upload(i, true)
+        }
     } else {
-        message.warn(`${ops}失败了，但手动重试几次或换个时间段再试没准会有奇效～`)
+        message.warn(`${ops}失败了，试试自动上传没准会有奇效～`)
     }
 }
 
@@ -260,6 +261,9 @@ watch(() => user.id, id => uploader.files = [])
                  :pagination="false"
                  :dataSource="uploader.files"
                  :columns="columns">
+            <template #emptyText>
+                <div style="padding: 130px 0;">当前暂无内容<br>您可以直接拖放文件在此处以添加到上传列表哦<br>上传期间请勿切换账号，否则可能导致不可预料的后果</div>
+            </template>
             <template #title>
 
                 <a-space>
@@ -279,10 +283,17 @@ watch(() => user.id, id => uploader.files = [])
                         <a-typography-text type="secondary">
                             <a-tooltip title="选择文件"
                                        placement="bottomLeft">
-                                <span style="text-decoration: underline;">点此 <b>选择文件</b>（支持多选）</span> 或者 将 <b>文件拖放</b> 至下方区域以添加至上传列表（上传期间请勿切换账号，否则可能导致不可预料的后果）
+                                <span style="text-decoration: underline;">点此 <b>选择文件</b>（支持多选）</span>
                             </a-tooltip>
                         </a-typography-text>
                     </label>
+
+                    <a-tooltip>
+                        <template #title>
+                            请注意：自动重试将在直接上传失败后会<u>尝试强制修改您的文件数据，改变文件的校验信息，以触发网易云的强制上传</u>，此方式在测试过程中会提升上传成功率。请放心，此操作不会修改您本地磁盘上的文件信息，但有可能会导致上传到网易云的音乐无法播放，请您上传完成后自行测试，若上传后的文件无法试听则请关闭此功能。
+                        </template>
+                        <a-checkbox v-model:checked="uploader.autoRetry">自动重试</a-checkbox>
+                    </a-tooltip>
                 </a-space>
 
             </template>
