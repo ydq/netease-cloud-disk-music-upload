@@ -21,11 +21,17 @@ dayjs.extend(relativeTime)
 
 const cloud = reactive({
     allData: [],//完整的原始数据
-    filter: '',//本地搜索过滤
+    filter: {
+        keywords: '',
+        showMore: false,
+        noCover: false
+    },//本地搜索过滤
     data: computed(() => {
         //给到table 的数据
         cloud.loading = true
-        let data = filterList(cloud.allData, cloud.filter.replace(/\s+/ig, '').toLowerCase())
+        let data = filterList(cloud.allData, cloud.filter.keywords.replace(/\s+/ig, '').toLowerCase(), record => {
+            return !cloud.filter.noCover || record.pic.endsWith('.126.net/UeTuwE7pvjBpypWLudqukA==/3132508627578625.jpg')
+        })
         cloud.loading = false
         pagination.total = data.length
         return data;
@@ -360,10 +366,28 @@ onMounted(reload)
                         <span v-if="cloud.selectedRowKeys.length">
                             {{ `已选择 ${cloud.selectedRowKeys.length} 项` }}
                         </span>
-                        <a-input allowClear
-                                 placeholder="本地搜索 标题/歌手/专辑"
-                                 size="small"
-                                 v-model:value="cloud.filter"></a-input>
+                        <a-input-group compact>
+                            <a-input allowClear
+                                     placeholder="本地搜索 标题/歌手/专辑"
+                                     size="small"
+                                     v-model:value="cloud.filter.keywords"
+                                     style="width:190px"></a-input>
+                            <a-dropdown placement="bottomRight"
+                                        v-model:open="cloud.filter.showMore">
+                                <a-button size="small"
+                                          @click.prevent>♺</a-button>
+                                <template #overlay>
+                                    <a-menu>
+                                        <a-tooltip title="控制仅显示没有封面的音乐，没有封面则表示可能没有匹配过信息，此设置刷新页面后不保存"
+                                                   placement="right">
+                                            <a-menu-item>
+                                                <a-checkbox v-model:checked="cloud.filter.noCover">仅显示无封面</a-checkbox>
+                                            </a-menu-item>
+                                        </a-tooltip>
+                                    </a-menu>
+                                </template>
+                            </a-dropdown>
+                        </a-input-group>
                     </a-space>
                 </a-col>
                 <a-col flex="auto">
@@ -540,5 +564,4 @@ onMounted(reload)
         }
     }
 
-}
-</style>
+}</style>

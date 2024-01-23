@@ -18,13 +18,13 @@ const calcFileMd5 = async (file, isRetry) => {
     return MD5.hash(data)
 }
 
-const filterList = (data, filter) => {
-    if (filter) {
+const filterList = (data, filterKw,filterFn=_=>true) => {
+    if (filterKw) {
         //全局忽略大小写分字搜索，支持  输入  “hloy”  命中匹配  “Hello How Are You”
         data = data.filter(record => {
             //标题、歌手、专辑 分开匹配，不能标题命中第一个搜索字，歌手命中第二个搜索字
             let searchs = record.search.split('@@')
-            let arrs = filter.split('')
+            let arrs = filterKw.split('')
             out: for (let s of searchs) {
                 let idx = -1;
                 for (let c of arrs) {
@@ -32,12 +32,12 @@ const filterList = (data, filter) => {
                         continue out;
                     }
                 }
-                return true
+                return filterFn(record)
             }
             return false
         })
     }
-    return data;
+    return data.filter(filterFn);
 }
 
 export { file2ArrayBuffer, calcFileMd5, filterList }

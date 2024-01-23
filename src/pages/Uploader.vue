@@ -14,12 +14,31 @@ import { message } from 'ant-design-vue'
 
 window.Buffer = Buffer;
 
+//从 localStorage 中读取配置
+let localSetting = localStorage['uploader_setting']
+
 const uploader = reactive({
     files: [],
     filesKey: Date.now(),
     drag: false,
     progressWidth: 24,
-    autoRetry: false
+    settings: {
+        show: false,
+        autoRetry: (localSetting & 1) == 1,
+        autoClean: (localSetting & 2) == 2,
+        useFileName: (localSetting & 4) == 4,
+    }
+})
+
+watch(()=>uploader.settings.show,show => {
+    if(!show){
+        //当设置浮层关闭的时候 将配置保存到 localStorage 中
+        let cfg = 0,set = uploader.settings
+        set.autoRetry && (cfg |= 1)
+        set.autoClean && (cfg |= 2)
+        set.useFileName && (cfg |= 4)
+        localStorage['uploader_setting'] = cfg
+    }
 })
 
 const editableData = reactive({})
@@ -65,7 +84,7 @@ const addFiles = files => {
             }
             let item = {
                 filename: file.name,
-                song: tag && tag.title || file.name,
+                song: uploader.settings.useFileName ? file.name.replace(/^(.*)\.\w+$/,'$1') : (tag && tag.title || file.name),
                 artist: tag && tag.artist || '',
                 album: tag && tag.album || '',
                 file,
@@ -82,15 +101,12 @@ const addFiles = files => {
  * 批量上传全部未上传的文件
  */
 const uploadAll = async () => {
-    let cnt = 0;
-    for (let i in uploader.files) {
-        if (uploader.files[i].percent == null) {
-            cnt++;
-            await upload(i)
-        }
-    }
-    if (cnt == 0) {
+    let datas = uploader.files.filter(data=>data.percent == null)
+    if (datas.length == 0) {
         message.info('列表中似乎没有需要上传的项目')
+    }
+    for (let data of datas) {
+        await upload(data)
     }
 
 }
@@ -98,8 +114,7 @@ const uploadAll = async () => {
 /**
  * 上传列表中的指定文件
  */
-const upload = async (i, isRetry = false) => {
-    const data = uploader.files[i]
+const upload = async (data, isRetry = false) => {
     //初始化一个进度条，防止频繁点击
     data.percent = 0
 
@@ -113,14 +128,14 @@ const upload = async (i, isRetry = false) => {
     let checkResp = await uploadCheck({ md5, length: data.file.size })
 
     if (!validCode.includes(checkResp.code)) {
-        await fail(i, '上传前置检查', isRetry)
+        await fail(data, '上传前置检查', isRetry)
         return
     }
 
     let tokenResp = await uploadToken({ ext, md5, filename })
 
     if (!validCode.includes(tokenResp.code)) {
-        await fail(i, '获取上传Token', isRetry)
+        await fail(data, '获取上传Token', isRetry)
         return
     }
 
@@ -132,11 +147,11 @@ const upload = async (i, isRetry = false) => {
                 objectKey: tokenResp.result.objectKey,
                 token: tokenResp.result.token
             }, isRetry, e => {
+                //上传进度完成不能表示真正的完成，后面还有接口需要调用
                 data.percent = e.progress == 1 ? 99 : Math.floor(e.progress * 100)
             })
         } catch (e) {
-            console.error('error', e)
-            await fail(i, '文件上传', isRetry)
+            await fail(data, '文件上传', isRetry)
             return
         }
     }
@@ -151,7 +166,7 @@ const upload = async (i, isRetry = false) => {
     })
 
     if (!validCode.includes(infoResp.code)) {
-        await fail(i, '更新文件信息', isRetry)
+        await fail(data, '更新文件信息', isRetry)
         return
     }
 
@@ -159,21 +174,25 @@ const upload = async (i, isRetry = false) => {
 
     if (validCode.includes(resp.code)) {
         message.success(`${data.filename}上传成功`)
-        data.percent = 100
+        if(uploader.settings.autoClean){
+            uploader.files.splice(uploader.files.findIndex(item => data == item),1)
+        } else {
+            data.percent = 100
+        }
     } else {
-        await fail(i, '保存到网盘', isRetry)
+        await fail(data, '保存到网盘', isRetry)
     }
 }
 
 
-const fail = async (i, ops, isRetry) => {
-    uploader.files[i].percent = null
-    if (uploader.autoRetry) {
+const fail = async (data, ops, isRetry) => {
+    data.percent = null
+    if (uploader.settings.autoRetry) {
         if (isRetry) {
             message.warn(`${ops}失败了，但手动重试几次或换个时间段再试没准会有奇效～`)
         } else {
             message.info('上传发生了一点问题，正在自动重试...')
-            await upload(i, true)
+            await upload(data, true)
         }
     } else {
         message.warn(`${ops}失败了，试试自动上传没准会有奇效～`)
@@ -203,11 +222,11 @@ const cancel = filename => {
 }
 
 const columns = [
-    { title: '标题', dataIndex: 'song', ellipsis: true, },
-    { title: '歌手', dataIndex: 'artist', ellipsis: true, },
-    { title: '专辑', dataIndex: 'album', ellipsis: true, },
+    { title: '标题', dataIndex: 'song', ellipsis: true, sorter: (a, b) => a.filename.localeCompare(b.filename, 'en')},
+    { title: '歌手', dataIndex: 'artist', ellipsis: true, sorter: (a, b) => a.artist.localeCompare(b.artist, 'en') },
+    { title: '专辑', dataIndex: 'album', ellipsis: true, sorter: (a, b) => a.album.localeCompare(b.album, 'en') },
     { title: '格式', dataIndex: 'ext', ellipsis: true, width: 80 },
-    { title: '大小', key: 'size', ellipsis: true, width: 100 },
+    { title: '大小', key: 'size', ellipsis: true, width: 100, sorter: (a, b) => a.file.size - b.file.size },
     { title: '操作', key: 'ops', ellipsis: true, width: 140, }
 ]
 
@@ -267,11 +286,41 @@ watch(() => user.id, id => uploader.files = [])
             <template #title>
 
                 <a-space>
+
                     <a-tooltip title="全部上传">
                         <a-button size="small"
                                   @click="uploadAll"
                                   :disabled="uploader.files.length == 0">ALL↑</a-button>
                     </a-tooltip>
+
+                    <a-dropdown placement="bottomLeft"
+                                v-model:open="uploader.settings.show">
+                        <a-button size="small" >SET</a-button>
+                        <template #overlay>
+                            <a-menu>
+                                <a-tooltip placement="right"  :overlayStyle="{ 'max-width': '340px' }">
+                                    <template #title>
+                                        请注意：自动重试将在直接上传失败后会<u>尝试强制修改您的文件数据，改变文件的校验信息，以触发网易云的强制上传</u>，此方式在测试过程中会提升上传成功率。请放心，此操作不会修改您本地磁盘上的文件信息，但有可能会导致上传到网易云的音乐无法播放，请您上传完成后自行测试，若上传后的文件无法试听则请关闭此功能。
+                                    </template>
+                                    <a-badge-ribbon text="注意"
+                                                    color="red">
+                                        <a-menu-item key="1">
+                                            <a-checkbox v-model:checked="uploader.settings.autoRetry">自动重试</a-checkbox>
+                                        </a-menu-item>
+                                    </a-badge-ribbon>
+                                </a-tooltip>
+                                    <a-menu-item key="2">
+                                        <a-checkbox v-model:checked="uploader.settings.autoClean">上传成功自动移除</a-checkbox>
+                                    </a-menu-item>
+                                <a-tooltip placement="right"
+                                           title="使用文件名作为标题，防止自动解析因编码问题造成的乱码，仅对新添加的文件生效，已经添加的文件不会生效">
+                                    <a-menu-item key="3">
+                                        <a-checkbox v-model:checked="uploader.settings.useFileName">文件名作为标题</a-checkbox>
+                                    </a-menu-item>
+                                </a-tooltip>
+                            </a-menu>
+                        </template>
+                    </a-dropdown>
                     <label for="fileInput">
                         <input id="fileInput"
                                type="file"
@@ -287,13 +336,6 @@ watch(() => user.id, id => uploader.files = [])
                             </a-tooltip>
                         </a-typography-text>
                     </label>
-
-                    <a-tooltip>
-                        <template #title>
-                            请注意：自动重试将在直接上传失败后会<u>尝试强制修改您的文件数据，改变文件的校验信息，以触发网易云的强制上传</u>，此方式在测试过程中会提升上传成功率。请放心，此操作不会修改您本地磁盘上的文件信息，但有可能会导致上传到网易云的音乐无法播放，请您上传完成后自行测试，若上传后的文件无法试听则请关闭此功能。
-                        </template>
-                        <a-checkbox v-model:checked="uploader.autoRetry">自动重试</a-checkbox>
-                    </a-tooltip>
                 </a-space>
 
             </template>
@@ -360,7 +402,7 @@ watch(() => user.id, id => uploader.files = [])
                                        key="tp-upload"
                                        :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                          @click="upload(index)">↑</a-button>
+                                          @click="upload(record)">↑</a-button>
                             </a-tooltip>
                             <a-tooltip title="移除列表"
                                        key="tp-remove"
@@ -435,5 +477,4 @@ label[for="fileInput"] {
 
 #fileInput {
     display: none;
-}
-</style>
+}</style>

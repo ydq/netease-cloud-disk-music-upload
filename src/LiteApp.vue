@@ -100,7 +100,6 @@ const changeFile = async e => {
 
 
 const upload = async (isRetry = false) => {
-    debugger
     uploader.show = false
     const data = uploader.data
     //初始化一个进度条，防止频繁点击
