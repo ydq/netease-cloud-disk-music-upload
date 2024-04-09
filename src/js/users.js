@@ -1,7 +1,7 @@
-import { userAccount } from '/src/js/api.js'
-import dayjs from 'dayjs';
-import 'dayjs/locale/zh-cn';
-dayjs.locale('zh-cn');
+import { userAccount } from '/src/js/api'
+import dayjs from 'dayjs'
+import 'dayjs/locale/zh-cn'
+dayjs.locale('zh-cn')
 
 /**
  * 检查登录状态，并获取用户信息
@@ -25,7 +25,7 @@ const checkLogin = async (user) => {
         }
         //登录成功之后记录一下当前用户登录cookie到缓存，便于浏览器清除cookie之后 还能快速登录 或者支持多账号登录
         await storeCurrenUser(user)
-        return true;
+        return true
     }
     Object.assign(user, {
         id: null,
@@ -34,7 +34,7 @@ const checkLogin = async (user) => {
         profile: '',
         gender: 0
     })
-    return false;
+    return false
 }
 
 /**
@@ -58,11 +58,11 @@ const storeCurrenUser = async (user) => {
     let usefulCookie = cookies
         .filter(c => c.path == '/' && ['music.163.com', '.music.163.com'].includes(c?.domain ?? '-'))
         .map(c => {
-            let { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, value } = c;
+            let { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, value } = c
             return { domain, expirationDate, httpOnly, name, path, sameSite, secure, storeId, value, url: 'https://music.163.com' }
-        });
+        })
     localStorage['userCookie-' + user.id] = JSON.stringify(usefulCookie)
-    return usefulCookie;
+    return usefulCookie
 }
 
 /**
@@ -93,13 +93,13 @@ const resumeUser = async (currUser, assignUserId) => {
     await Promise.all(JSON.parse(localStorage[`userCookie-${assignUserId}`] || '[]').map(async cookie => cookieOps('set',cookie)))
     let check = await checkLogin(currUser)
     check || delUser(assignUserId)
-    return check;
+    return check
 }
 
 const userList = (currUid) => {
     let users = JSON.parse(localStorage.userList || '[]')
     users.forEach((usr, idx, arr) => usr.id == currUid && arr.splice(idx, 1))
-    return users;
+    return users
 }
 
 

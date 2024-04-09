@@ -1,7 +1,6 @@
 <script setup>
-import { inject, onMounted, ref, watch } from 'vue';
-import { checkLogin, switchUser, resumeUser, userList } from '/src/js/users.js'
-import UserCard from './UserCard.vue'
+import { inject, onMounted, ref, watch } from 'vue'
+import { checkLogin, switchUser, resumeUser, userList } from '/src/js/users'
 
 
 const user = inject('user')

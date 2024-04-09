@@ -1,5 +1,5 @@
 <script setup>
-import { resumeUser, delUser } from '/src/js/users.js'
+import { delUser, resumeUser } from '/src/js/users';
 //多用户登录快速切换的单个用户小卡组件
 const props = defineProps({
     userContext: Object,
@@ -33,12 +33,17 @@ function deleteUser() {
     <a-tooltip :placement="props.placement">
         <template #title>
             <div class="user_ops">
-                {{ props.user.name }}<br><span @click="changeUser">快速登录</span>｜<span @click="deleteUser">删除记录</span>
+                <div>{{ props.user.name }}</div>
+                <div>
+                    <span @click="changeUser">快速登录</span>
+                    <a-divider type="vertical" />
+                    <span @click="deleteUser">删除记录</span>
+                </div>
             </div>
         </template>
         <a-avatar :src="props.user.avatar"
                   :size="props.size"
-                  style="box-shadow: 0 0 0 1px #ccc;"></a-avatar>
+                  style="box-shadow: 0 0 0 1px #ccc;margin:1px"></a-avatar>
     </a-tooltip>
 </template>
 <style>

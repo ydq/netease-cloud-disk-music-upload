@@ -1,18 +1,18 @@
 import axios from 'axios'
-import { file2ArrayBuffer } from './helper';
+import { file2ArrayBuffer } from '/src/js/helper'
 
 const instance = axios.create({
     timeout: 60000,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     withCredentials: 'true',
     responseType: 'json'
-});
+})
 
 /**
  * 获取账号信息
  */
 const userAccount = async (data = {}) => {
-    return (await instance.post('https://music.163.com/api/nuser/account/get', new URLSearchParams(data).toString())).data;
+    return (await instance.post('https://music.163.com/api/nuser/account/get', new URLSearchParams(data).toString())).data
 }
 
 /**
@@ -59,15 +59,15 @@ const uploadToken = async (data = {
  * 上传step3: 上传文件（根据 step1 检查结果判断是否需要上传）
  * 过大的文件需要分片上传（这里经过尝试发现100M以内直接上传是安全的，过大的文件分隔成80M的分片进行上传）
  */
-const singleFileMaxSize = 100 * 1024 * 1024;
-const chunkSize = 80 * 1024 * 1024;
+const singleFileMaxSize = 100 * 1024 * 1024
+const chunkSize = 80 * 1024 * 1024
 const splitFile = async (file, start, end) => {
     let blobSlice = File.prototype.slice || File.prototype.webkitSlice
     return new Promise((resolve, reject) => {
         let fileReader = new FileReader()
         fileReader.onload = e => resolve(e.target.result)
         fileReader.onerror = reject
-        fileReader.readAsArrayBuffer(blobSlice.call(file, start, end));
+        fileReader.readAsArrayBuffer(blobSlice.call(file, start, end))
     })
 }
 const uploadFile = async (data = {
@@ -93,17 +93,17 @@ const uploadFile = async (data = {
         }
     } else {
         //大于100M的文件进行分片
-        let chunks = Math.ceil(totalSize / chunkSize);
+        let chunks = Math.ceil(totalSize / chunkSize)
         let context = ''
         for (let i = 0; i < chunks; i++) {
             let isLast = i == chunks - 1
             //计算文件分片的起止offset
-            let start = i * chunkSize;
+            let start = i * chunkSize
             let end = isLast ? totalSize : (start + chunkSize)
             //文件分片
             let partData = await splitFile(data.file, i * chunkSize, end)
             if (isRetry && isLast) {
-                partData = partData.transfer(partData.maxByteLength + 1);
+                partData = partData.transfer(partData.maxByteLength + 1)
             }
             //文件分片，进度条事件需要重写
             let proxyProgress = e => {

@@ -1,8 +1,8 @@
 <script setup>
-import { loginKey, checkScan, validCode } from '/src/js/api.js'
-import { checkLogin, userList } from '/src/js/users.js'
-import { defineAsyncComponent, inject, onMounted, reactive, ref } from 'vue';
-import { message } from 'ant-design-vue'
+import { message } from 'ant-design-vue';
+import { inject, onMounted, reactive, ref } from 'vue';
+import { checkScan, loginKey, validCode } from '/src/js/api';
+import { checkLogin, userList } from '/src/js/users';
 
 //从App.vue 中注入的 当前的用户
 const user = inject('user')
@@ -32,7 +32,7 @@ async function checkQrScan() {
     let resp = await checkScan({ key: qr.key })
     if (!validCode.includes(resp.code)) {
         message.warn(resp.message)
-        return;
+        return
     }
     //800 二维码已失效｜801 等待扫码 ｜802 扫码成功 等待授权 ｜ 803 扫码授权成功
     qr.code = resp.code
@@ -74,9 +74,6 @@ async function quickLogin({ usr, state }) {
 const removeHistory = async () => {
     users.value = await userList()
 }
-
-//多用户登录时的 用户卡片组件
-const userCard = defineAsyncComponent(() => import('/src/components/UserCard.vue'))
 
 </script>
 <template>

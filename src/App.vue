@@ -1,10 +1,9 @@
 <script setup>
-import zhCN from 'ant-design-vue/es/locale/zh_CN';
-import { defineAsyncComponent, onMounted, provide, reactive, ref, watch } from 'vue';
 import { message, theme } from 'ant-design-vue'
-import { checkLogin } from './js/users.js'
-import { useRoute, useRouter } from 'vue-router';
-import AppHead from './components/AppHead.vue';
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import { onMounted, provide, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { checkLogin } from '/src/js/users'
 
 const route = useRoute()
 const router = useRouter()
@@ -67,39 +66,30 @@ audio.onerror = e => {
     player.stop()
 }
 
+const current = ref('list')
 
-
-//一些子组件
-const login = defineAsyncComponent(() => import('./components/Login.vue'))
-const spectrum = defineAsyncComponent(() => import('./components/Spectrum.vue'))
-
-
-const current = ref(['list'])
-
-const init = watch(route, route => {
-    current.value = [route.name]
-    init()
-})
-
-watch(current, page => {
-    if (page[0] != 'lite') {
-        router.replace({ name: page[0] })
+watch(current, (name,old) => {
+    if (name != 'lite') {
+        router.replace({ name })
     } else {
-        let width = 400, height = 680;
+        current.value = old
+        let width = 400, height = 680
         window.open('lite.html', 'ncu_lite', `popup=1,location=0,menubar=0,resizable=0,scrollbars=0,status=0,titlebar=0,toolbar=0,width=${width},height=${height},left=${(window.screen.width - width) / 2},top=${(window.screen.height - height) / 2}`)
         window.close()
     }
 })
 
+watch(route, route => current.value = route.name)
+
 //系统深色主题自动监听探测 并注入给下游组件使用
-const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+const themeMedia = window.matchMedia("(prefers-color-scheme: dark)")
 const isDark = ref(themeMedia.matches)
-themeMedia.addEventListener('change', e => isDark.value = e.matches);
+themeMedia.addEventListener('change', e => isDark.value = e.matches)
 
 
-provide('player', player);
-provide('user', user);
-provide('isDark', isDark);//后续如果有一些自定义的元素需要根据深色主题定制效果可以使用这个
+provide('player', player)
+provide('user', user)
+provide('isDark', isDark)//后续如果有一些自定义的元素需要根据深色主题定制效果可以使用这个
 
 </script>
 
@@ -108,20 +98,16 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
                        :theme="{ token: { fontFamily: 'jbt', fontSize: 16, controlHeight: 36 }, algorithm: isDark ? [theme.compactAlgorithm, theme.darkAlgorithm] : theme.compactAlgorithm }">
         <template v-if="user.name && user.avatar">
             <app-head />
-            <a-menu v-model:selectedKeys="current"
-                    mode="horizontal">
-                <a-menu-item key="list">网盘音乐列表</a-menu-item>
-                <a-menu-item key="uploader">本地音乐上传</a-menu-item>
-                <a-menu-item key="lite">
-                    <a-tooltip title="适配移动设备"
-                               placement="right">Lite版</a-tooltip>
-                </a-menu-item>
-            </a-menu>
+            <a-tabs v-model:activeKey="current" animated>
+                <a-tab-pane key="list" tab="网盘音乐列表"/>
+                <a-tab-pane key="uploader" tab="本地音乐上传"/>
+                <a-tab-pane key="lite" tab="Lite版"/>
+            </a-tabs>
             <router-view v-slot="{ Component }">
                 <transition name="page">
-                    <KeepAlive>
+                    <keep-alive>
                         <component :is="Component" />
-                    </KeepAlive>
+                    </keep-alive>
                 </transition>
             </router-view>
             <spectrum :audio="audio" />
@@ -161,12 +147,8 @@ provide('isDark', isDark);//后续如果有一些自定义的元素需要根据�
     padding: 0;
 }
 
-.ant-menu-light {
-    background: transparent;
-}
-
 .ant-page-header-heading-left,
-.ant-menu-item {
+.ant-tabs-nav-list{
     backdrop-filter: blur(3px);
 }
 

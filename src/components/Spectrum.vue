@@ -1,6 +1,6 @@
 <script setup>
-import { inject, onMounted, ref, watch } from 'vue';
-import { spectrum, spectrumInit, spectrumRenderFrame } from '/src/js/spectrum.js'
+import { inject, onMounted, ref, watch } from 'vue'
+import { spectrum, spectrumInit, spectrumRenderFrame } from '/src/js/spectrum'
 
 //顶部播放音乐的频谱组件
 const props = defineProps(['audio'])
@@ -14,10 +14,10 @@ props.audio.addEventListener("playing", e => {
         spectrum.isPlaying = true
         setTimeout(spectrumRenderFrame, 300)
     }
-});
+})
 props.audio.addEventListener("pause", e => {
     spectrum.isPlaying = false
-});
+})
 
 
 const changeSpectrumColor = () => {
@@ -41,7 +41,7 @@ const changeSpectrumColor = () => {
 watch(isDark, e => changeSpectrumColor())
 
 onMounted(() => {
-    changeSpectrumColor();
+    changeSpectrumColor()
     spectrumInit(props.audio, canvasEl.value)
 })
 </script>
@@ -53,7 +53,7 @@ onMounted(() => {
 #spectrumCanvas {
     position: absolute;
     width: 960px;
-    height: 100px;
+    height: 90px;
     top: 0;
     right: 0;
     transform: rotateY(180deg);

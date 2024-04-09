@@ -1,8 +1,8 @@
 <script setup>
 import { computed, inject, onMounted, reactive } from 'vue'
-import { cloudGet, cloudDel, songInfo, songMatch, validCode } from '/src/js/api.js'
-import { checkLogin } from '/src/js/users.js'
-import { filterList } from '/src/js/helper.js'
+import { cloudGet, cloudDel, songInfo, songMatch, validCode } from '/src/js/api'
+import { checkLogin } from '/src/js/users'
+import { filterList } from '/src/js/helper'
 import { message, Modal } from 'ant-design-vue'
 import axios from 'axios'
 
@@ -16,7 +16,7 @@ const cloud = reactive({
         let data = filterList(cloud.allData, cloud.filter.replace(/\s+/ig, '').toLowerCase())
         cloud.loading = false
         pagination.total = data.length
-        return data;
+        return data
     }),
     loading: false,
 })
@@ -59,7 +59,7 @@ const loadData = async (offset, autoRetry = true) => {
     }
     if (resp.data.length < 100) {
         cloud.loading = false
-        return;
+        return
     }
     await loadData(offset + 100)
 }
@@ -74,7 +74,7 @@ const convert = item => {
     album ||= simpleSong?.al?.name || ''
     let search = [songName, artist, album].join('@@').replace(/\s+/ig, '').toLowerCase()
     let pic = simpleSong?.al?.picUrl || ''
-    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime };
+    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime }
 }
 
 /**
@@ -97,16 +97,16 @@ const download = async item => {
                 item.dlPercent = Math.floor(e.progress * 100)
             }
         })
-        const blob = new Blob([dlResp.data]);
-        const fileName = `${item.songName}-${item.artist}.${(song.type || song.encodeType).toLowerCase()}`;
-        const elink = document.createElement('a');
-        elink.download = fileName;
-        elink.style.display = 'none';
-        elink.href = URL.createObjectURL(blob);
-        document.body.appendChild(elink);
-        elink.click();
-        URL.revokeObjectURL(elink.href);
-        document.body.removeChild(elink);
+        const blob = new Blob([dlResp.data])
+        const fileName = `${item.songName}-${item.artist}.${(song.type || song.encodeType).toLowerCase()}`
+        const elink = document.createElement('a')
+        elink.download = fileName
+        elink.style.display = 'none'
+        elink.href = URL.createObjectURL(blob)
+        document.body.appendChild(elink)
+        elink.click()
+        URL.revokeObjectURL(elink.href)
+        document.body.removeChild(elink)
     } else {
         message.warn('获取链接地址失败，但重试几次或换个时间段再试没准会有奇效～')
     }
@@ -139,7 +139,7 @@ const match = async () => {
     }
     if (!/^\d+$/.test(record.asid)) {
         message.warn('您输入的可能不是一个合法的ID或者网易云音乐的歌曲链接，请检查～')
-        return;
+        return
     }
     if (record.asid == record.songId) {
         message.info('当前歌曲已经是您填写的匹配信息了，若要取消匹配请输入0')
@@ -170,7 +170,7 @@ const remove = item => {
                 message.warn('删除云盘音乐失败，但重试几次或换个时间段再试没准会有奇效～')
             }
         }
-    });
+    })
 }
 
 onMounted(reload)
@@ -228,7 +228,7 @@ defineExpose({ reload })
                 </a-list-item>
             </template>
         </a-list>
-        <a-modal :visible="matchdata.show"
+        <a-modal :open="matchdata.show"
                  title="歌曲信息匹配修正"
                  @ok="match"
                  @cancel="matchdata.show = false">

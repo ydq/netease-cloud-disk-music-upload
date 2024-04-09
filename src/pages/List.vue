@@ -1,21 +1,19 @@
-<route lang="json">
-{
+<route lang="json">{
     "name": "list",
     "path": "/list",
     "alias": [
         "/"
     ]
-}
-</route>
+}</route>
 <script setup>
-import { computed, inject, onMounted, reactive, watch } from 'vue'
-import { cloudGet, cloudDel, songInfo, lyric, songMatch, validCode } from '/src/js/api.js'
-import { checkLogin } from '/src/js/users.js'
-import { filterList } from '/src/js/helper.js'
+import { Modal, message } from 'ant-design-vue'
+import axios from 'axios'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { message, Modal } from 'ant-design-vue'
-import axios from 'axios'
+import { computed, inject, onMounted, reactive, watch } from 'vue'
+import { cloudDel, cloudGet, lyric, songInfo, songMatch, validCode } from '/src/js/api'
+import { filterList } from '/src/js/helper'
+import { checkLogin } from '/src/js/users'
 
 dayjs.extend(relativeTime)
 
@@ -34,7 +32,7 @@ const cloud = reactive({
         })
         cloud.loading = false
         pagination.total = data.length
-        return data;
+        return data
     }),
     loading: false,
     selectedRowKeys: [],
@@ -89,7 +87,7 @@ const loadData = async (offset, autoRetry = true) => {
     }
     if (resp.data.length < 100) {
         cloud.loading = false
-        return;
+        return
     }
     await loadData(offset + 100)
 }
@@ -104,7 +102,7 @@ const convert = item => {
     album ||= simpleSong?.al?.name || ''
     let search = [songName, artist, album].join('@@').replace(/\s+/ig, '').toLowerCase()
     let pic = simpleSong?.al?.picUrl || ''
-    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime };
+    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime }
 }
 
 /**
@@ -136,7 +134,7 @@ const delData = () => {
                 message.warn('删除云盘音乐失败，但重试几次或换个时间段再试没准会有奇效～')
             }
         }
-    });
+    })
 }
 
 const dateFmt = time => {
@@ -168,12 +166,12 @@ const getLyric = async id => {
     if (resp.lrc && resp.lrc.lyric) {
         let lrcs = {}
         resp.lrc.lyric.split('\n').forEach(line => {
-            let lrcTxt = /(?:\[\d+:\d+\.\d+\])+(.*)/g.exec(line);
+            let lrcTxt = /(?:\[\d+:\d+\.\d+\])+(.*)/g.exec(line)
             lrcTxt && line.match(/\[\d+:\d+.\d+\]/g).forEach(time => {
-                let t = /\[(\d+):(\d+)\.(\d+)\]/.exec(time);
-                lrcs[60 * t[1] + 1 * t[2]] = lrcTxt[1];
-            });
-        });
+                let t = /\[(\d+):(\d+)\.(\d+)\]/.exec(time)
+                lrcs[60 * t[1] + 1 * t[2]] = lrcTxt[1]
+            })
+        })
         cloud.lrcs = lrcs
     }
 }
@@ -246,16 +244,16 @@ const download = async items => {
                         item.dlPercent = Math.floor(e.progress * 100)
                     }
                 })
-                const blob = new Blob([dlResp.data]);
-                const fileName = `${item.songName}-${item.artist}.${(song.type || song.encodeType).toLowerCase()}`;
-                const elink = document.createElement('a');
-                elink.download = fileName;
-                elink.style.display = 'none';
-                elink.href = URL.createObjectURL(blob);
-                document.body.appendChild(elink);
-                elink.click();
-                URL.revokeObjectURL(elink.href);
-                document.body.removeChild(elink);
+                const blob = new Blob([dlResp.data])
+                const fileName = `${item.songName}-${item.artist}.${(song.type || song.encodeType).toLowerCase()}`
+                const elink = document.createElement('a')
+                elink.download = fileName
+                elink.style.display = 'none'
+                elink.href = URL.createObjectURL(blob)
+                document.body.appendChild(elink)
+                elink.click()
+                URL.revokeObjectURL(elink.href)
+                document.body.removeChild(elink)
                 //cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(song.id), 1)
             }
         } else {
@@ -284,7 +282,7 @@ const match = async record => {
     }
     if (!/^\d+$/.test(record.asid)) {
         message.warn('您输入的可能不是一个合法的ID或者网易云音乐的歌曲链接，请检查～')
-        return;
+        return
     }
     if (record.asid == record.songId) {
         message.info('当前歌曲已经是您填写的匹配信息了，若要取消匹配请输入0')
@@ -305,8 +303,8 @@ const match = async record => {
             getLyric(newId)//自动触发根据新的歌曲ID重新获取歌词
         }
         if (cloud.selectedRowKeys.includes(oldId)) {
-            cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(oldId), 1);
-            cloud.selectedRowKeys.push(newId);
+            cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(oldId), 1)
+            cloud.selectedRowKeys.push(newId)
         }
     } else {
         message.warn(resp.message)
@@ -324,24 +322,24 @@ onMounted(reload)
              :loading="cloud.loading"
              :pagination="pagination"
              :row-selection="{
-                 selectedRowKeys: cloud.selectedRowKeys,
-                 onChange(keys) { cloud.selectedRowKeys = keys }
-             }"
+                selectedRowKeys: cloud.selectedRowKeys,
+                onChange(keys) { cloud.selectedRowKeys = keys }
+            }"
              :custom-row="record => {
-                 return {
-                     onClick: () => {
-                         if (cloud.selectedRowKeys.includes(record.songId)) {
-                             cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(record.songId), 1);
-                         } else {
-                             cloud.selectedRowKeys.push(record.songId);
-                         }
-                     },
-                 }
-             }"
+                return {
+                    onClick: () => {
+                        if (cloud.selectedRowKeys.includes(record.songId)) {
+                            cloud.selectedRowKeys.splice(cloud.selectedRowKeys.indexOf(record.songId), 1)
+                        } else {
+                            cloud.selectedRowKeys.push(record.songId)
+                        }
+                    },
+                }
+            }"
              @change="page => Object.assign(pagination, page)">
         <template #title>
             <a-row type="flex">
-                <a-col flex="400px">
+                <a-col flex="450px">
                     <a-space>
                         <a-tooltip title="重新加载">
                             <a-button size="small"
@@ -392,11 +390,11 @@ onMounted(reload)
                 </a-col>
                 <a-col flex="auto">
                     <div style="position: relative;text-align: right;">
-                        <Transition name="lrc">
+                        <transition name="lrc">
                             <div :key="cloud.currLrc || 'noneLrc'">
                                 <a-typography-text type="secondary">{{ cloud.currLrc }}</a-typography-text>
                             </div>
-                        </Transition>
+                        </transition>
                     </div>
                 </a-col>
             </a-row>
@@ -564,4 +562,5 @@ onMounted(reload)
         }
     }
 
-}</style>
+}
+</style>

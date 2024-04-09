@@ -1,19 +1,17 @@
 <script setup>
-import zhCN from 'ant-design-vue/es/locale/zh_CN';
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { message } from 'ant-design-vue'
-import { checkLogin } from '/src/js/users.js'
-import { calcFileMd5 } from '/src/js/helper.js'
+import { checkLogin } from '/src/js/users'
+import { calcFileMd5 } from '/src/js/helper'
 import { parseBuffer as metaData } from 'music-metadata'
 import { Buffer } from 'buffer'
-import { cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '/src/js/api.js'
-import { onMounted, provide, reactive, ref } from 'vue';
-import Login from './components/Login.vue';
-import LiteList from './components/LiteList.vue';
+import { cloudGet, uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '/src/js/api'
+import { onMounted, provide, reactive, ref } from 'vue'
 
-import { Modal } from 'ant-design-vue';
+import { Modal } from 'ant-design-vue'
 
 
-window.Buffer = Buffer;
+window.Buffer = Buffer
 
 const listComponent = ref()
 
@@ -25,7 +23,7 @@ const user = reactive({
     gender: 0
 })
 
-provide('user', user);
+provide('user', user)
 
 onMounted(async () => {
     await checkLogin(user)
@@ -51,7 +49,7 @@ const loadData = async (offset, isRetry = false) => {
     }
     if (resp.data.length < 100) {
         cloud.loading = false
-        return;
+        return
     }
     await loadData(offset + 100)
 }
@@ -73,11 +71,11 @@ const changeFile = async e => {
         || file.type.toLowerCase().endsWith('/mp4')
         || file.name.toLowerCase().endsWith('.ape')
     if (!check) {
-        message.warn('您选择的文件可能不被支持');
+        message.warn('您选择的文件可能不被支持')
         return
     }
     let ext = file.name.match(/\.(?<ext>\w+)$/).groups.ext.toUpperCase()
-    let tag = null;
+    let tag = null
     try {
         let meta = await metaData(Buffer.from(await file.arrayBuffer()), file.type)
         if (meta && meta.common) {
@@ -231,7 +229,7 @@ const switchAutoRetry = state => {
         </div>
         <login v-else />
         <a-modal title="编辑信息"
-                 :visible="uploader.show"
+                 :open="uploader.show"
                  @cancel="e => uploader.show = false"
                  @ok="e => upload()"
                  ok-text="确定上传">

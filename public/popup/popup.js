@@ -4,5 +4,5 @@ if(window.open(page,'ncu')){
     window.close()
 } else{
     //firefox
-    browser.tabs.create({url: page},()=> window.close());
+    browser.tabs.create({url: page},()=> window.close())
 }

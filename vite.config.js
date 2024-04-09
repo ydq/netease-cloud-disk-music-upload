@@ -36,5 +36,5 @@ export default ({ command, mode }) => {
         commonCfg.build ??= {}
         commonCfg.build.watch ??= {}
     }
-    return commonCfg;
+    return commonCfg
 }

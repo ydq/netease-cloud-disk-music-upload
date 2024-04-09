@@ -26,10 +26,10 @@ const filterList = (data, filterKw,filterFn=_=>true) => {
             let searchs = record.search.split('@@')
             let arrs = filterKw.split('')
             out: for (let s of searchs) {
-                let idx = -1;
+                let idx = -1
                 for (let c of arrs) {
                     if ((idx = s.indexOf(c, idx + 1)) == -1) {
-                        continue out;
+                        continue out
                     }
                 }
                 return filterFn(record)
@@ -37,7 +37,7 @@ const filterList = (data, filterKw,filterFn=_=>true) => {
             return false
         })
     }
-    return data.filter(filterFn);
+    return data.filter(filterFn)
 }
 
 export { file2ArrayBuffer, calcFileMd5, filterList }

@@ -27,7 +27,7 @@ const spectrumInit = (audio, canvas) => {
     spectrum.ctx = canvas.getContext("2d")
     if (spectrum.analyser != null) {
         //已经初始化过了，无需再次初始化
-        return;
+        return
     }
     spectrum.meterNum = Math.round(spectrum.canvasWidth / (spectrum.meterWidth + spectrum.gap))
     let audioCtx = new AudioContext()
@@ -38,7 +38,7 @@ const spectrumInit = (audio, canvas) => {
     spectrum.barColors.forEach(c => {
         spectrum.gradient.addColorStop(c[0], c[1])
     })
-    spectrum.isPlaying && spectrumRenderFrame();
+    spectrum.isPlaying && spectrumRenderFrame()
 }
 /**
  * 循环绘制频谱
@@ -61,14 +61,14 @@ const spectrumRenderFrame = () => {
                 spectrum.canvasHeight - --spectrum.capYPosition[i],
                 spectrum.meterWidth,
                 spectrum.capHeight
-            );
+            )
         } else {
             spectrum.ctx.fillRect(
                 xPos,
                 Math.max(0, spectrum.canvasHeight - value),
                 spectrum.meterWidth,
                 spectrum.capHeight
-            );
+            )
             spectrum.capYPosition[i] = value
         }
         spectrum.ctx.fillStyle = spectrum.gradient
@@ -77,7 +77,7 @@ const spectrumRenderFrame = () => {
             Math.max(0, spectrum.canvasHeight - value) + spectrum.capHeight,
             spectrum.meterWidth,
             spectrum.canvasHeight
-        );
+        )
     }
     if (spectrum.isPlaying) {
         requestAnimationFrame(spectrumRenderFrame)

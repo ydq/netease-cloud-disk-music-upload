@@ -7,12 +7,12 @@
 <script setup>
 import { parseBuffer as metaData } from 'music-metadata'
 import { Buffer } from 'buffer'
-import { inject, reactive, watch } from 'vue'
-import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '/src/js/api.js'
-import { calcFileMd5 } from '/src/js/helper.js'
+import { computed, inject, reactive, watch } from 'vue'
+import { uploadCheck, uploadToken, uploadFile, cloudInfo, cloudPub, validCode } from '/src/js/api'
+import { calcFileMd5 } from '/src/js/helper'
 import { message } from 'ant-design-vue'
 
-window.Buffer = Buffer;
+window.Buffer = Buffer
 
 //从 localStorage 中读取配置
 let localSetting = localStorage['uploader_setting']
@@ -20,6 +20,21 @@ let localSetting = localStorage['uploader_setting']
 const uploader = reactive({
     files: [],
     filesKey: Date.now(),
+    sorter:null,
+    sortFiles:computed(()=>{
+        if(!uploader.sorter?.order){
+            return uploader.files
+        }
+        let {field,columnKey,order} = uploader.sorter
+        let sorter = columns.find(c => c.key == columnKey && c.dataIndex == field).sorter
+        return [...uploader.files].sort((a,b)=>{
+            if(order == 'ascend'){
+                return sorter(a,b)
+            } else {
+                return sorter(b,a)
+            }
+        })
+    }),
     drag: false,
     progressWidth: 24,
     settings: {
@@ -68,12 +83,12 @@ const addFiles = files => {
         return file.type.toLowerCase().startsWith('audio/')
             || file.type.toLowerCase().endsWith('/x-ms-wma') // video/x-ms-wma
             || file.type.toLowerCase().endsWith('/mp4')
-            || file.name.toLowerCase().endsWith('.ape');
+            || file.name.toLowerCase().endsWith('.ape')
     })
         .filter(file => !uploader.files.map(i => i.filename).includes(file.name))
         .forEach(async file => {
             let ext = file.name.match(/\.(?<ext>\w+)$/).groups.ext.toUpperCase()
-            let tag = null;
+            let tag = null
             try {
                 let meta = await metaData(Buffer.from(await file.arrayBuffer()), file.type)
                 if (meta && meta.common) {
@@ -101,7 +116,7 @@ const addFiles = files => {
  * 批量上传全部未上传的文件
  */
 const uploadAll = async () => {
-    let datas = uploader.files.filter(data=>data.percent == null)
+    let datas = uploader.sortFiles.filter(data=>data.percent == null)
     if (datas.length == 0) {
         message.info('列表中似乎没有需要上传的项目')
     }
@@ -218,7 +233,7 @@ const save = filename => {
  * 取消编辑指定文件的信息
  */
 const cancel = filename => {
-    delete editableData[filename];
+    delete editableData[filename]
 }
 
 const columns = [
@@ -279,7 +294,8 @@ watch(() => user.id, id => uploader.files = [])
                  row-key="filename"
                  :pagination="false"
                  :dataSource="uploader.files"
-                 :columns="columns">
+                 :columns="columns"
+                 @change="(page, filter, sorter) => uploader.sorter = sorter">
             <template #emptyText>
                 <div style="padding: 130px 0;">当前暂无内容<br>您可以直接拖放文件在此处以添加到上传列表哦<br>上传期间请勿切换账号，否则可能导致不可预料的后果</div>
             </template>
@@ -408,7 +424,7 @@ watch(() => user.id, id => uploader.files = [])
                                        key="tp-remove"
                                        :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                          @click="uploader.files.splice(index, 1)">&times;</a-button>
+                                          @click="uploader.files.splice(uploader.files.findIndex(item=>item == record), 1)">&times;</a-button>
                             </a-tooltip>
                         </template>
                     </a-space>
