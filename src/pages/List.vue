@@ -28,7 +28,7 @@ const cloud = reactive({
         //给到table 的数据
         cloud.loading = true
         let data = filterList(cloud.allData, cloud.filter.keywords.replace(/\s+/ig, '').toLowerCase(), record => {
-            return !cloud.filter.noCover || record.pic.endsWith('.126.net/UeTuwE7pvjBpypWLudqukA==/3132508627578625.jpg')
+            return !cloud.filter.noCover || record.nonMatch
         })
         cloud.loading = false
         pagination.total = data.length
@@ -100,9 +100,10 @@ const convert = item => {
     songName ||= simpleSong.name || ''
     artist ||= simpleSong?.ar?.[0]?.name || ''
     album ||= simpleSong?.al?.name || ''
+    let nonMatch = simpleSong?.al?.name == null
     let search = [songName, artist, album].join('@@').replace(/\s+/ig, '').toLowerCase()
     let pic = simpleSong?.al?.picUrl || ''
-    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime }
+    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime ,nonMatch }
 }
 
 /**
