@@ -21,7 +21,7 @@ const commonCfg = defineConfig({
         }),
     ],
     build: {
-        chunkSizeWarningLimit: 2048, //这是浏览器插件，没必要限制但文件大小
+        chunkSizeWarningLimit: 2048, //这是浏览器插件，没必要限制单文件大小
         rollupOptions: {
             input:{
                 default: 'index.html',

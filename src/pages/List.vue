@@ -28,7 +28,7 @@ const cloud = reactive({
         //给到table 的数据
         cloud.loading = true
         let data = filterList(cloud.allData, cloud.filter.keywords.replace(/\s+/ig, '').toLowerCase(), record => {
-            return !cloud.filter.noCover || record.pic.endsWith('.126.net/UeTuwE7pvjBpypWLudqukA==/3132508627578625.jpg')
+            return !cloud.filter.noCover || record.nonMatch
         })
         cloud.loading = false
         pagination.total = data.length
@@ -93,16 +93,16 @@ const loadData = async (offset, autoRetry = true) => {
 }
 /**
  * 将元数据简化，便于其它地方使用
- * @param {接口返回来的歌曲元数据} item 
  */
 const convert = item => {
     let { songId, asid, songName, simpleSong, artist, album, fileSize, addTime } = item
     songName ||= simpleSong.name || ''
     artist ||= simpleSong?.ar?.[0]?.name || ''
     album ||= simpleSong?.al?.name || ''
+    let nonMatch = simpleSong?.al?.name == null
     let search = [songName, artist, album].join('@@').replace(/\s+/ig, '').toLowerCase()
     let pic = simpleSong?.al?.picUrl || ''
-    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime }
+    return { songId, asid, songName, artist, album, search, pic, fileSize, addTime, nonMatch }
 }
 
 /**
@@ -145,7 +145,6 @@ const dateFmt = time => {
     return d.fromNow()
 }
 
-
 const play = async item => {
     if (player.id != item.songId) {
         let resp = await songInfo({ ids: [item.songId] })
@@ -159,7 +158,6 @@ const play = async item => {
         player.stop()
     }
 }
-
 
 const getLyric = async id => {
     let resp = await lyric({ id })
@@ -344,21 +342,21 @@ onMounted(reload)
                         <a-tooltip title="重新加载">
                             <a-button size="small"
                                       @click="reload()">
-                                ◎
+                                <i class="icon icon-reload"></i>
                             </a-button>
                         </a-tooltip>
                         <a-tooltip title="批量删除">
                             <a-button size="small"
                                       :disabled="!cloud.selectedRowKeys.length"
                                       @click="delData()">
-                                &times;
+                                <i class="icon icon-delete"></i>
                             </a-button>
                         </a-tooltip>
                         <a-tooltip title="批量下载">
                             <a-button size="small"
                                       :disabled="!cloud.selectedRowKeys.length"
                                       @click="batchDownload()">
-                                ↓
+                                <i class="icon icon-download"></i>
                             </a-button>
                         </a-tooltip>
                         <span v-if="cloud.selectedRowKeys.length">
@@ -373,7 +371,9 @@ onMounted(reload)
                             <a-dropdown placement="bottomRight"
                                         v-model:open="cloud.filter.showMore">
                                 <a-button size="small"
-                                          @click.prevent>♺</a-button>
+                                          @click.prevent>
+                                    <i class="icon icon-setting"></i>
+                                </a-button>
                                 <template #overlay>
                                     <a-menu>
                                         <a-tooltip title="控制仅显示没有封面的音乐，没有封面则表示可能没有匹配过信息，此设置刷新页面后不保存"
@@ -494,13 +494,16 @@ onMounted(reload)
                                              placeholder="输入ID或者链接按回车"
                                              @keyup.enter="match(record)"></a-input>
                                     <a-button size="small"
-                                              @click.stop="match(record)">✓</a-button>
+                                              @click.stop="match(record)">
+                                        <i class="icon icon-ok"></i>
+                                    </a-button>
                                 </a-input-group>
                             </div>
                         </template>
                         <a-button size="small"
-                                  icon="@"
-                                  @click.stop></a-button>
+                                  @click.stop>
+                            <i class="icon icon-link"></i>
+                        </a-button>
                     </a-popover>
                 </a-space>
             </template>

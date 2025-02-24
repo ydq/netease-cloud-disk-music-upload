@@ -130,7 +130,10 @@ provide('isDark', isDark)//后续如果有一些自定义的元素需要根据�
     min-height: 100%;
     margin: auto;
 }
-
+.icon{
+    font-size: inherit;
+    font-weight: bold;
+}
 .page-enter-active,
 .page-leave-active {
     transition: all .3s ease;

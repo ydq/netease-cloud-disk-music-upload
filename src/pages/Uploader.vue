@@ -1,9 +1,7 @@
-<route lang="json">
-{
+<route lang="json">{
     "name": "uploader",
     "path": "/uploader"
-}
-</route>
+}</route>
 <script setup>
 import { parseBuffer as metaData } from 'music-metadata'
 import { Buffer } from 'buffer'
@@ -20,18 +18,18 @@ let localSetting = localStorage['uploader_setting']
 const uploader = reactive({
     files: [],
     filesKey: Date.now(),
-    sorter:null,
-    sortFiles:computed(()=>{
-        if(!uploader.sorter?.order){
+    sorter: null,
+    sortFiles: computed(() => {
+        if (!uploader.sorter?.order) {
             return uploader.files
         }
-        let {field,columnKey,order} = uploader.sorter
+        let { field, columnKey, order } = uploader.sorter
         let sorter = columns.find(c => c.key == columnKey && c.dataIndex == field).sorter
-        return [...uploader.files].sort((a,b)=>{
-            if(order == 'ascend'){
-                return sorter(a,b)
+        return [...uploader.files].sort((a, b) => {
+            if (order == 'ascend') {
+                return sorter(a, b)
             } else {
-                return sorter(b,a)
+                return sorter(b, a)
             }
         })
     }),
@@ -45,10 +43,10 @@ const uploader = reactive({
     }
 })
 
-watch(()=>uploader.settings.show,show => {
-    if(!show){
+watch(() => uploader.settings.show, show => {
+    if (!show) {
         //当设置浮层关闭的时候 将配置保存到 localStorage 中
-        let cfg = 0,set = uploader.settings
+        let cfg = 0, set = uploader.settings
         set.autoRetry && (cfg |= 1)
         set.autoClean && (cfg |= 2)
         set.useFileName && (cfg |= 4)
@@ -99,7 +97,7 @@ const addFiles = files => {
             }
             let item = {
                 filename: file.name,
-                song: uploader.settings.useFileName ? file.name.replace(/^(.*)\.\w+$/,'$1') : (tag && tag.title || file.name),
+                song: uploader.settings.useFileName ? file.name.replace(/^(.*)\.\w+$/, '$1') : (tag && tag.title || file.name),
                 artist: tag && tag.artist || '',
                 album: tag && tag.album || '',
                 file,
@@ -116,7 +114,7 @@ const addFiles = files => {
  * 批量上传全部未上传的文件
  */
 const uploadAll = async () => {
-    let datas = uploader.sortFiles.filter(data=>data.percent == null)
+    let datas = uploader.sortFiles.filter(data => data.percent == null)
     if (datas.length == 0) {
         message.info('列表中似乎没有需要上传的项目')
     }
@@ -189,8 +187,8 @@ const upload = async (data, isRetry = false) => {
 
     if (validCode.includes(resp.code)) {
         message.success(`${data.filename}上传成功`)
-        if(uploader.settings.autoClean){
-            uploader.files.splice(uploader.files.findIndex(item => data == item),1)
+        if (uploader.settings.autoClean) {
+            uploader.files.splice(uploader.files.findIndex(item => data == item), 1)
         } else {
             data.percent = 100
         }
@@ -237,7 +235,7 @@ const cancel = filename => {
 }
 
 const columns = [
-    { title: '标题', dataIndex: 'song', ellipsis: true, sorter: (a, b) => a.filename.localeCompare(b.filename, 'en')},
+    { title: '标题', dataIndex: 'song', ellipsis: true, sorter: (a, b) => a.filename.localeCompare(b.filename, 'en') },
     { title: '歌手', dataIndex: 'artist', ellipsis: true, sorter: (a, b) => a.artist.localeCompare(b.artist, 'en') },
     { title: '专辑', dataIndex: 'album', ellipsis: true, sorter: (a, b) => a.album.localeCompare(b.album, 'en') },
     { title: '格式', dataIndex: 'ext', ellipsis: true, width: 80 },
@@ -306,15 +304,20 @@ watch(() => user.id, id => uploader.files = [])
                     <a-tooltip title="全部上传">
                         <a-button size="small"
                                   @click="uploadAll"
-                                  :disabled="uploader.files.length == 0">ALL↑</a-button>
+                                  :disabled="uploader.files.length == 0">
+                            <i class="icon icon-upload"></i>
+                        </a-button>
                     </a-tooltip>
 
                     <a-dropdown placement="bottomLeft"
                                 v-model:open="uploader.settings.show">
-                        <a-button size="small" >SET</a-button>
+                        <a-button size="small">
+                            <i class="icon icon-setting"></i>
+                        </a-button>
                         <template #overlay>
                             <a-menu>
-                                <a-tooltip placement="right"  :overlayStyle="{ 'max-width': '340px' }">
+                                <a-tooltip placement="right"
+                                           :overlayStyle="{ 'max-width': '340px' }">
                                     <template #title>
                                         请注意：自动重试将在直接上传失败后会<u>尝试强制修改您的文件数据，改变文件的校验信息，以触发网易云的强制上传</u>，此方式在测试过程中会提升上传成功率。请放心，此操作不会修改您本地磁盘上的文件信息，但有可能会导致上传到网易云的音乐无法播放，请您上传完成后自行测试，若上传后的文件无法试听则请关闭此功能。
                                     </template>
@@ -325,9 +328,9 @@ watch(() => user.id, id => uploader.files = [])
                                         </a-menu-item>
                                     </a-badge-ribbon>
                                 </a-tooltip>
-                                    <a-menu-item key="2">
-                                        <a-checkbox v-model:checked="uploader.settings.autoClean">上传成功自动移除</a-checkbox>
-                                    </a-menu-item>
+                                <a-menu-item key="2">
+                                    <a-checkbox v-model:checked="uploader.settings.autoClean">上传成功自动移除</a-checkbox>
+                                </a-menu-item>
                                 <a-tooltip placement="right"
                                            title="使用文件名作为标题，防止自动解析因编码问题造成的乱码，仅对新添加的文件生效，已经添加的文件不会生效">
                                     <a-menu-item key="3">
@@ -393,7 +396,9 @@ watch(() => user.id, id => uploader.files = [])
                                        key="tp-save"
                                        :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                          @click="save(record.filename)">✓</a-button>
+                                          @click="save(record.filename)">
+                                    <i class="icon icon-ok"></i>
+                                </a-button>
                             </a-tooltip>
 
                             <a-popconfirm title="确定取消吗？"
@@ -402,7 +407,9 @@ watch(() => user.id, id => uploader.files = [])
                                            placement="right"
                                            key="tp-cancel"
                                            :mouseLeaveDelay="0">
-                                    <a-button size="small">&times;</a-button>
+                                    <a-button size="small">
+                                        <i class="icon icon-back"></i>
+                                    </a-button>
                                 </a-tooltip>
                             </a-popconfirm>
                         </template>
@@ -411,20 +418,26 @@ watch(() => user.id, id => uploader.files = [])
                                        key="tp-edit"
                                        :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                          @click="edit(record.filename)">#</a-button>
+                                          @click="edit(record.filename)">
+                                    <i class="icon icon-edit"></i>
+                                </a-button>
                             </a-tooltip>
 
                             <a-tooltip title="上传音乐"
                                        key="tp-upload"
                                        :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                          @click="upload(record)">↑</a-button>
+                                          @click="upload(record)">
+                                    <i class="icon icon-upload"></i>
+                                </a-button>
                             </a-tooltip>
                             <a-tooltip title="移除列表"
                                        key="tp-remove"
                                        :mouseLeaveDelay="0">
                                 <a-button size="small"
-                                          @click="uploader.files.splice(uploader.files.findIndex(item=>item == record), 1)">&times;</a-button>
+                                          @click="uploader.files.splice(uploader.files.findIndex(item => item == record), 1)">
+                                    <i class="icon icon-delete"></i>
+                                </a-button>
                             </a-tooltip>
                         </template>
                     </a-space>
@@ -493,4 +506,5 @@ label[for="fileInput"] {
 
 #fileInput {
     display: none;
-}</style>
+}
+</style>
